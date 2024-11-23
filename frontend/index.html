@@ -1,0 +1,40 @@
+<!-- 로그인/회원가입 페이지 -->
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Virtual Guitar</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <h1>Virtual Guitar 로그인/회원가입</h1>
+    <!-- 회원가입 폼 -->
+    <h2>회원가입</h2>
+    <form id="register-form">
+      <input type="text" id="register-username" placeholder="아이디" required />
+      <input
+        type="password"
+        id="register-password"
+        placeholder="비밀번호"
+        required
+      />
+      <button type="submit">회원가입</button>
+    </form>
+
+    <!-- 로그인 폼 -->
+    <h2>로그인</h2>
+    <form id="login-form">
+      <input type="text" id="login-username" placeholder="아이디" required />
+      <input
+        type="password"
+        id="login-password"
+        placeholder="비밀번호"
+        required
+      />
+      <button type="submit">로그인</button>
+    </form>
+
+    <!-- 스크립트 로드 -->
+    <script src="js/auth.js"></script>
+  </body>
+</html>

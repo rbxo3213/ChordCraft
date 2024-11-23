@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Virtual Guitar</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <h1>Virtual Guitar 연주</h1>
+
+    <div id="guitar">
+      <!-- 기타 몸체 -->
+      <div id="guitar-body">
+        <!-- 프렛 -->
+        <div class="frets">
+          <!-- 프렛 마커를 표시할 수 있습니다 -->
+        </div>
+        <!-- 현 -->
+        <div class="string" data-string="6"></div>
+        <div class="string" data-string="5"></div>
+        <div class="string" data-string="4"></div>
+        <div class="string" data-string="3"></div>
+        <div class="string" data-string="2"></div>
+        <div class="string" data-string="1"></div>
+      </div>
+    </div>
+
+    <!-- 키보드 설정 변경 -->
+    <h2>키보드 설정</h2>
+    <form id="keyboard-settings-form">
+      <!-- 키 설정 입력 필드들 -->
+      <!-- 예시로 코드 선택 키 설정 -->
+      <label for="code-keys">코드 선택 키:</label>
+      <input type="text" id="code-keys" value="C,D,E,F,G,A,B" />
+      <!-- 현 연주 키 설정 -->
+      <label for="string-keys">현 연주 키:</label>
+      <input type="text" id="string-keys" value="1,2,3,4,5,6" />
+      <button type="submit">설정 저장</button>
+    </form>
+
+    <!-- 스크립트 로드 -->
+    <script src="js/guitar.js"></script>
+  </body>
+</html>
