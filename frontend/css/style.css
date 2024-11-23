@@ -1,3 +1,5 @@
+/* frontend/css/style.css */
+
 body {
   font-family: Arial, sans-serif;
   margin: 20px;
@@ -6,6 +8,42 @@ body {
 h1,
 h2 {
   color: #333;
+}
+
+#navbar {
+  background-color: #444;
+  padding: 10px;
+  text-align: right;
+}
+
+#navbar a {
+  color: white;
+  margin-left: 20px;
+  text-decoration: none;
+}
+
+#navbar a:hover {
+  text-decoration: underline;
+}
+
+#record-button {
+  display: block;
+  margin: 10px auto;
+  background-color: #d9534f;
+  color: white;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 4px;
+}
+
+#record-button.recording {
+  background-color: #5cb85c;
+}
+
+#recording-status {
+  text-align: center;
+  font-size: 18px;
+  color: #d9534f;
 }
 
 #guitar {
@@ -71,18 +109,21 @@ h2 {
 
 @keyframes vibrate {
   0% {
-    transform: translateX(0);
+    transform: translateY(0);
   }
   25% {
-    transform: translateX(2px);
+    transform: translateY(-2px);
   }
   50% {
-    transform: translateX(0);
+    transform: translateY(0);
   }
   75% {
-    transform: translateX(-2px);
+    transform: translateY(2px);
   }
   100% {
-    transform: translateX(0);
+    transform: translateY(0);
   }
 }
+
+/* 로그인 및 회원가입 폼 스타일 */
+/* ... (이전과 동일) */

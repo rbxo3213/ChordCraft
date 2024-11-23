@@ -6,7 +6,19 @@
     <link rel="stylesheet" href="css/style.css" />
   </head>
   <body>
+    <div id="navbar">
+      <a href="#" id="profile-button">프로필</a>
+    </div>
+
     <h1>Virtual Guitar 연주</h1>
+    <!-- 현재 선택된 코드 표시 -->
+    <div id="current-chord-display">선택된 코드: 없음</div>
+
+    <!-- 녹음 상태 표시 -->
+    <div id="recording-status"></div>
+
+    <!-- 녹음 버튼 -->
+    <button id="record-button">녹음 시작</button>
 
     <div id="guitar">
       <!-- 기타 몸체 -->
@@ -28,13 +40,12 @@
     <!-- 키보드 설정 변경 -->
     <h2>키보드 설정</h2>
     <form id="keyboard-settings-form">
-      <!-- 키 설정 입력 필드들 -->
-      <!-- 예시로 코드 선택 키 설정 -->
+      <!-- 코드 선택 키 설정 -->
       <label for="code-keys">코드 선택 키:</label>
       <input type="text" id="code-keys" value="C,D,E,F,G,A,B" />
-      <!-- 현 연주 키 설정 -->
-      <label for="string-keys">현 연주 키:</label>
-      <input type="text" id="string-keys" value="1,2,3,4,5,6" />
+      <!-- 코드 모드 키 설정 -->
+      <label for="chord-type-keys">코드 모드 키:</label>
+      <input type="text" id="chord-type-keys" value="1,2,3,4,5" />
       <button type="submit">설정 저장</button>
     </form>
 
