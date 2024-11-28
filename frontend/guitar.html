@@ -2,7 +2,7 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <title>Virtual Guitar</title>
+    <title>Chord Craft</title>
     <link rel="stylesheet" href="css/style.css" />
   </head>
   <body>
@@ -43,13 +43,56 @@
       <!-- 코드 선택 키 설정 -->
       <label for="code-keys">코드 선택 키:</label>
       <input type="text" id="code-keys" value="C,D,E,F,G,A,B" />
+
       <!-- 코드 모드 키 설정 -->
       <label for="chord-type-keys">코드 모드 키:</label>
-      <input type="text" id="chord-type-keys" value="1,2,3,4,5" />
+      <input type="text" id="chord-type-keys" value="1,2,3,4,5,6" />
+
+      <!-- 연주 키 설정 -->
+      <label for="string-keys">연주 키:</label>
+      <input type="text" id="string-keys" value="u,i,o,p,[,]" />
+
       <button type="submit">설정 저장</button>
     </form>
 
+    <!-- 코드 모드 키 설명 -->
+    <div id="chord-type-description">
+      <h3>코드 모드 키 설명</h3>
+      <ul>
+        <li>1: Major (메이저)</li>
+        <li>2: 7 (세븐)</li>
+        <li>3: m (마이너)</li>
+        <li>4: m7 (마이너 세븐)</li>
+        <li>5: m7 (메이저 세븐)</li>
+        <li>6: Barre Chord (배레 코드)</li>
+      </ul>
+      <p>
+        <strong>Barre Chord</strong>는 한 손가락으로 여러 현을 동시에 누르는
+        코드 형태입니다. 이를 통해 다양한 코드를 같은 형태로 이동시키며 연주할
+        수 있습니다.
+      </p>
+    </div>
+
+    <!-- 코드 모드 키 설명 추가 -->
+    <div id="chord-type-explanation">
+      <h3>코드 모드 키 조합 예시</h3>
+      <p>
+        예를 들어, <strong>C</strong>와 <strong>1</strong>을 조합하면
+        <strong>C Major</strong> 코드가 됩니다.<br />
+        <strong>C</strong>와 <strong>2</strong>를 조합하면
+        <strong>C7</strong> 코드,<br />
+        <strong>C</strong>와 <strong>3</strong>을 조합하면
+        <strong>Cm</strong> 코드,<br />
+        <strong>C</strong>와 <strong>4</strong>를 조합하면
+        <strong>Cm7</strong> 코드,<br />
+        <strong>C</strong>와 <strong>5</strong>를 조합하면
+        <strong>CM7</strong> 코드,<br />
+        <strong>C</strong>와 <strong>6</strong>를 조합하면
+        <strong>C Barre Chord</strong>가 됩니다.
+      </p>
+    </div>
+
     <!-- 스크립트 로드 -->
-    <script src="js/guitar.js"></script>
+    <script type="module" src="js/guitar.js"></script>
   </body>
 </html>
