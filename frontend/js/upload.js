@@ -1,9 +1,4 @@
-// frontend/js/upload.js
-
-// 서버 URL 설정
 const SERVER_URL = "http://localhost:5000";
-
-// 토큰 및 사용자 ID 가져오기
 const token = localStorage.getItem("token");
 
 if (!token) {
@@ -11,7 +6,6 @@ if (!token) {
   window.location.href = "index.html";
 }
 
-// 음악 업로드 이벤트
 document.getElementById("upload-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const title = document.getElementById("music-title").value;

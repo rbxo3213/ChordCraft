@@ -1,0 +1,44 @@
+<!-- frontend/editPost.html -->
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>글 수정</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+      .form-container {
+        width: 80%;
+        margin: 20px auto;
+      }
+      .form-container input[type="text"],
+      .form-container textarea {
+        width: 100%;
+        margin-bottom: 10px;
+      }
+      .form-container button {
+        float: right;
+      }
+    </style>
+  </head>
+  <body>
+    <a href="guitar.html" class="logo">WebGuitar</a>
+    <h1 style="text-align: center">글 수정</h1>
+    <div class="form-container">
+      <form id="edit-post-form">
+        <input
+          type="text"
+          id="edit-post-title"
+          placeholder="제목"
+          required
+        /><br />
+        <textarea id="edit-post-content" placeholder="내용" required></textarea
+        ><br />
+        <!-- 음악 파일 수정은 선택사항. 필요하다면 주석 해제
+        <input type="file" id="edit-post-music-file" accept="audio/*" /><br />
+        -->
+        <button type="submit">수정</button>
+      </form>
+    </div>
+    <script src="js/editPost.js"></script>
+  </body>
+</html>

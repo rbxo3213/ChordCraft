@@ -1,0 +1,2153 @@
+파일경로: backend\app.js
+// backend/app.js ㅎㅎ
+const express = require("express");
+const bodyParser = require("body-parser");
+const cors = require("cors");
+const app = express();
+const mongoose = require("mongoose");
+const path = require("path");
+require("dotenv").config();
+
+const corsOptions = {
+  origin: "http://localhost:3000",
+  credentials: true,
+};
+app.use(cors(corsOptions));
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+
+// 정적 파일 제공
+app.use(express.static(path.join(__dirname, "../frontend")));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+const userRoutes = require("./routes/users");
+const musicRoutes = require("./routes/music");
+const postsRoutes = require("./routes/posts");
+
+app.use("/api/users", userRoutes);
+app.use("/api/music", musicRoutes);
+app.use("/api/posts", postsRoutes);
+
+mongoose
+  .connect(process.env.MONGODB_URI)
+  .then(() => {
+    console.log("DB Connected");
+    const PORT = process.env.PORT || 5000;
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error("DB Connection Error:", err);
+  });
+
+
+파일경로: backend\controllers\musicController.js
+// backend/controllers/musicController.js
+const Music = require("../models/Music");
+const User = require("../models/User");
+
+exports.uploadMusic = async (req, res) => {
+  try {
+    const { title } = req.body;
+    const userId = req.userId;
+    const fileUrl = `/uploads/${req.file.filename}`;
+    const newMusic = await Music.create({ title, fileUrl, uploadedBy: userId });
+
+    await User.findByIdAndUpdate(userId, { $push: { uploads: newMusic._id } });
+
+    res.status(201).json({ message: "음악 업로드 성공", music: newMusic });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.getUserMusic = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const musicList = await Music.find({ uploadedBy: userId });
+    res.status(200).json({ musicList });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
+파일경로: backend\controllers\postController.js
+// backend/controllers/postController.js
+const Post = require("../models/Post");
+
+exports.createPost = async (req, res) => {
+  try {
+    const { title, content } = req.body;
+    let musicFileUrl = null;
+    if (req.file) {
+      musicFileUrl = `/uploads/${req.file.filename}`;
+    }
+
+    const newPost = await Post.create({
+      author: req.userId,
+      title,
+      content,
+      musicFileUrl,
+    });
+
+    res.status(201).json({ message: "게시글 작성 성공", post: newPost });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "서버 오류" });
+  }
+};
+
+exports.getPosts = async (req, res) => {
+  try {
+    const posts = await Post.find({})
+      .populate("author", "nickname profilePicture")
+      .sort({ createdAt: -1 });
+    res.status(200).json({ posts });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "서버 오류" });
+  }
+};
+
+exports.getPostById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const post = await Post.findById(id)
+      .populate("author", "nickname profilePicture")
+      .populate("comments.author", "nickname profilePicture");
+    if (!post) return res.status(404).json({ message: "게시글 없음" });
+
+    const postObj = post.toObject();
+    postObj.likeCount = post.likes.length; // likeCount는 likes 배열 길이로 계산
+
+    res.status(200).json({ post: postObj });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "서버 오류" });
+  }
+};
+
+exports.updatePost = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, content } = req.body;
+
+    const post = await Post.findById(id);
+    if (!post) return res.status(404).json({ message: "게시글 없음" });
+    if (post.author.toString() !== req.userId) {
+      return res.status(403).json({ message: "수정 권한 없음" });
+    }
+
+    post.title = title;
+    post.content = content;
+    await post.save();
+
+    res.status(200).json({ message: "게시글 수정 성공", post });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "서버 오류" });
+  }
+};
+
+exports.deletePost = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const post = await Post.findById(id);
+    if (!post) return res.status(404).json({ message: "게시글 없음" });
+    if (post.author.toString() !== req.userId) {
+      return res.status(403).json({ message: "삭제 권한 없음" });
+    }
+
+    await Post.findByIdAndDelete(id); // post.remove() 대신 findByIdAndDelete 사용
+    res.status(200).json({ message: "게시글 삭제 성공" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "서버 오류" });
+  }
+};
+
+exports.addComment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { content } = req.body;
+    const post = await Post.findById(id);
+    if (!post) return res.status(400).json({ message: "게시글 없음" });
+
+    post.comments.push({ author: req.userId, content });
+    await post.save();
+
+    res.status(201).json({ message: "댓글 추가 성공" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "서버 오류" });
+  }
+};
+
+exports.updateComment = async (req, res) => {
+  try {
+    const { id, commentId } = req.params;
+    const { content } = req.body;
+    const post = await Post.findById(id);
+    if (!post) return res.status(404).json({ message: "게시글 없음" });
+
+    const comment = post.comments.id(commentId);
+    if (!comment) return res.status(404).json({ message: "댓글 없음" });
+    if (comment.author.toString() !== req.userId) {
+      return res.status(403).json({ message: "수정 권한 없음" });
+    }
+
+    comment.content = content;
+    await post.save();
+    res.status(200).json({ message: "댓글 수정 성공" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "서버 오류" });
+  }
+};
+
+exports.deleteComment = async (req, res) => {
+  try {
+    const { id, commentId } = req.params;
+    const post = await Post.findById(id);
+    if (!post) return res.status(404).json({ message: "게시글 없음" });
+
+    const comment = post.comments.id(commentId);
+    if (!comment) return res.status(404).json({ message: "댓글 없음" });
+    if (comment.author.toString() !== req.userId) {
+      return res.status(403).json({ message: "삭제 권한 없음" });
+    }
+
+    post.comments.pull(commentId);
+    await post.save();
+
+    res.status(200).json({ message: "댓글 삭제 성공" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "서버 오류" });
+  }
+};
+
+exports.toggleLike = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const post = await Post.findById(id);
+    if (!post) return res.status(404).json({ message: "게시글 없음" });
+
+    const userId = req.userId;
+    const index = post.likes.findIndex((uid) => uid.toString() === userId);
+    if (index === -1) {
+      // 좋아요 추가
+      post.likes.push(userId);
+    } else {
+      // 좋아요 취소
+      post.likes.splice(index, 1);
+    }
+
+    await post.save();
+    res
+      .status(200)
+      .json({ message: "좋아요 반영 성공", likeCount: post.likes.length });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "서버 오류" });
+  }
+};
+
+
+파일경로: backend\controllers\userController.js
+// backend/controllers/userController.js
+const User = require("../models/User");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const validator = require("validator");
+require("dotenv").config();
+
+// 회원가입
+exports.register = async (req, res) => {
+  try {
+    const { username, password, nickname } = req.body;
+
+    if (!validator.isAlphanumeric(username)) {
+      return res
+        .status(400)
+        .json({ message: "아이디는 영문자와 숫자만 사용할 수 있습니다." });
+    }
+
+    if (password.length < 8) {
+      return res
+        .status(400)
+        .json({ message: "비밀번호는 최소 8자 이상이어야 합니다." });
+    }
+
+    if (!/\d/.test(password) || !/[a-zA-Z]/.test(password)) {
+      return res
+        .status(400)
+        .json({ message: "비밀번호는 숫자와 문자를 포함해야 합니다." });
+    }
+
+    if (!nickname || nickname.trim() === "") {
+      return res.status(400).json({ message: "닉네임을 입력해주세요." });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = await User.create({
+      username,
+      password: hashedPassword,
+      nickname,
+    });
+    res.status(201).json({ message: "회원가입 성공", user: newUser });
+  } catch (err) {
+    console.error(err);
+    res
+      .status(500)
+      .json({ message: "서버 오류가 발생했습니다. 관리자에게 문의하세요." });
+  }
+};
+
+// 로그인
+exports.login = async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res
+        .status(400)
+        .json({ message: "아이디와 비밀번호를 입력해주세요." });
+    }
+
+    const user = await User.findOne({ username });
+    if (!user)
+      return res
+        .status(400)
+        .json({ message: "아이디나 비밀번호가 틀렸습니다." });
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch)
+      return res
+        .status(400)
+        .json({ message: "아이디나 비밀번호가 틀렸습니다." });
+
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    });
+
+    res.status(200).json({ message: "로그인 성공", token, userId: user._id });
+  } catch (err) {
+    console.error(err);
+    res
+      .status(500)
+      .json({ message: "서버 오류가 발생했습니다. 관리자에게 문의하세요." });
+  }
+};
+
+// 프로필 조회
+exports.getUserProfile = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const user = await User.findById(userId).populate("uploads");
+    if (!user) return res.status(400).json({ message: "사용자 없음" });
+
+    res.status(200).json({ user });
+  } catch (err) {
+    console.error(err);
+    res
+      .status(500)
+      .json({ message: "서버 오류가 발생했습니다. 관리자에게 문의하세요." });
+  }
+};
+
+// 비밀번호 변경
+exports.changePassword = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { oldPassword, newPassword } = req.body;
+
+    const user = await User.findById(userId);
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch)
+      return res
+        .status(400)
+        .json({ message: "기존 비밀번호가 일치하지 않습니다." });
+
+    if (
+      newPassword.length < 8 ||
+      !/\d/.test(newPassword) ||
+      !/[a-zA-Z]/.test(newPassword)
+    ) {
+      return res.status(400).json({ message: "새 비밀번호 조건 불충족" });
+    }
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+    user.password = hashed;
+    await user.save();
+    res.status(200).json({ message: "비밀번호 변경 성공" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "서버 오류" });
+  }
+};
+
+// 회원탈퇴
+exports.deleteUser = async (req, res) => {
+  try {
+    const userId = req.userId;
+    await User.findByIdAndDelete(userId);
+    res.status(200).json({ message: "회원탈퇴 성공" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "서버 오류" });
+  }
+};
+
+// 프로필 사진 업데이트
+exports.updateProfilePicture = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { profilePicture } = req.body; // 미리 준비된 이미지 경로
+    const user = await User.findById(userId);
+    if (!user) return res.status(400).json({ message: "사용자 없음" });
+    user.profilePicture = profilePicture;
+    await user.save();
+    res.status(200).json({ message: "프로필 사진 변경 성공" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "서버 오류" });
+  }
+};
+
+
+파일경로: backend\middlewares\authMiddleware.js
+// backend/middlewares/authMiddleware.js
+const jwt = require("jsonwebtoken");
+require("dotenv").config();
+
+module.exports = (req, res, next) => {
+  let token = req.headers["authorization"];
+
+  if (!token) return res.status(401).json({ message: "토큰 없음" });
+
+  if (token.startsWith("Bearer ")) {
+    token = token.slice(7, token.length);
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.userId = decoded.id;
+    next();
+  } catch (err) {
+    res.status(401).json({ message: "유효하지 않은 토큰" });
+  }
+};
+
+
+파일경로: backend\models\Music.js
+// backend/models/Music.js
+const mongoose = require("mongoose");
+
+const MusicSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  fileUrl: { type: String, required: true },
+  uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  uploadDate: { type: Date, default: Date.now },
+});
+
+module.exports = mongoose.model("Music", MusicSchema);
+
+
+파일경로: backend\models\Post.js
+// backend/models/Post.js
+const mongoose = require("mongoose");
+
+const CommentSchema = new mongoose.Schema({
+  author: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  content: String,
+  createdAt: { type: Date, default: Date.now },
+});
+
+const PostSchema = new mongoose.Schema({
+  author: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  title: { type: String, required: true },
+  content: { type: String, required: true },
+  musicFileUrl: { type: String },
+  comments: [
+    {
+      author: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      content: String,
+      createdAt: { type: Date, default: Date.now },
+    },
+  ],
+  likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+  createdAt: { type: Date, default: Date.now },
+});
+
+module.exports = mongoose.model("Post", PostSchema);
+
+
+파일경로: backend\models\User.js
+// backend/models/User.js
+const mongoose = require("mongoose");
+
+const UserSchema = new mongoose.Schema({
+  username: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  nickname: { type: String, required: true },
+  profilePicture: { type: String },
+  uploads: [{ type: mongoose.Schema.Types.ObjectId, ref: "Music" }],
+});
+
+module.exports = mongoose.model("User", UserSchema);
+
+
+파일경로: backend\routes\music.js
+const express = require("express");
+const router = express.Router();
+const musicController = require("../controllers/musicController");
+const authMiddleware = require("../middlewares/authMiddleware");
+const multer = require("multer");
+const path = require("path");
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, path.join(__dirname, "../uploads/"));
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname));
+  },
+});
+const upload = multer({ storage });
+
+router.post(
+  "/upload",
+  authMiddleware,
+  upload.single("music"),
+  musicController.uploadMusic
+);
+router.get("/user", authMiddleware, musicController.getUserMusic);
+
+module.exports = router;
+
+
+파일경로: backend\routes\posts.js
+// backend/routes/posts.js
+const express = require("express");
+const router = express.Router();
+const postController = require("../controllers/postController");
+const authMiddleware = require("../middlewares/authMiddleware");
+const multer = require("multer");
+const path = require("path");
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    // uploads 폴더 존재하는지 확인 후 없으면 만들어주세요.
+    cb(null, path.join(__dirname, "../uploads/"));
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname));
+  },
+});
+const upload = multer({ storage });
+
+router
+  .route("/")
+  .get(postController.getPosts)
+  .post(authMiddleware, upload.single("music"), postController.createPost);
+
+router
+  .route("/:id")
+  .get(postController.getPostById)
+  .put(authMiddleware, postController.updatePost)
+  .delete(authMiddleware, postController.deletePost);
+
+// 댓글 CRUD
+router.post("/:id/comments", authMiddleware, postController.addComment);
+router.put(
+  "/:id/comments/:commentId",
+  authMiddleware,
+  postController.updateComment
+);
+router.delete(
+  "/:id/comments/:commentId",
+  authMiddleware,
+  postController.deleteComment
+);
+
+// 좋아요 토글
+router.post("/:id/like", authMiddleware, postController.toggleLike);
+
+module.exports = router;
+
+
+파일경로: backend\routes\users.js
+// backend/routes/users.js
+const express = require("express");
+const router = express.Router();
+const userController = require("../controllers/userController");
+const authMiddleware = require("../middlewares/authMiddleware");
+
+// 회원가입
+router.post("/register", userController.register);
+
+// 로그인
+router.post("/login", userController.login);
+
+// 프로필 조회
+router.get("/profile", authMiddleware, userController.getUserProfile);
+
+// 비밀번호 변경
+router.post("/change-password", authMiddleware, userController.changePassword);
+
+// 회원탈퇴
+router.delete("/delete", authMiddleware, userController.deleteUser);
+
+// 프로필 사진 변경
+router.put(
+  "/profile-picture",
+  authMiddleware,
+  userController.updateProfilePicture
+);
+
+module.exports = router;
+
+
+파일경로: frontend\board.html
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>게시판</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+      table {
+        width: 80%;
+        margin: 20px auto;
+        border-collapse: collapse;
+        table-layout: fixed;
+      }
+      colgroup col:nth-child(2) {
+        width: 50%; /* 제목 칼럼 넓게 */
+      }
+      th,
+      td {
+        border: 1px solid #ccc;
+        padding: 10px;
+        text-align: center;
+        word-wrap: break-word; /* 길면 줄바꿈 */
+      }
+      th {
+        background-color: #f2f2f2;
+      }
+      .board-title {
+        text-align: center;
+        margin-top: 40px;
+      }
+      .board-title h1 {
+        margin-bottom: 20px;
+      }
+      .logo {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        font-weight: bold;
+        font-size: 24px;
+        text-decoration: none;
+        color: #333;
+      }
+      .new-post-btn {
+        width: 80%;
+        margin: 20px auto;
+        text-align: right;
+      }
+    </style>
+  </head>
+  <body>
+    <a href="guitar.html" class="logo">WebGuitar</a>
+    <div class="board-title">
+      <h1>자유게시판</h1>
+    </div>
+
+    <div class="new-post-btn">
+      <a href="newPost.html"><button>글쓰기</button></a>
+    </div>
+
+    <table>
+      <colgroup>
+        <col style="width: 50px" />
+        <col />
+        <col style="width: 100px" />
+        <col style="width: 150px" />
+        <col style="width: 50px" />
+      </colgroup>
+      <thead>
+        <tr>
+          <th>No</th>
+          <th>제목</th>
+          <th>글쓴이</th>
+          <th>작성시간</th>
+          <th>좋아요</th>
+        </tr>
+      </thead>
+      <tbody id="board-list"></tbody>
+    </table>
+
+    <script src="js/board.js"></script>
+  </body>
+</html>
+
+
+파일경로: frontend\editPost.html
+<!-- frontend/editPost.html -->
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>글 수정</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+      .form-container {
+        width: 80%;
+        margin: 20px auto;
+      }
+      .form-container input[type="text"],
+      .form-container textarea {
+        width: 100%;
+        margin-bottom: 10px;
+      }
+      .form-container button {
+        float: right;
+      }
+    </style>
+  </head>
+  <body>
+    <a href="guitar.html" class="logo">WebGuitar</a>
+    <h1 style="text-align: center">글 수정</h1>
+    <div class="form-container">
+      <form id="edit-post-form">
+        <input
+          type="text"
+          id="edit-post-title"
+          placeholder="제목"
+          required
+        /><br />
+        <textarea id="edit-post-content" placeholder="내용" required></textarea
+        ><br />
+        <!-- 음악 파일 수정은 선택사항. 필요하다면 주석 해제
+        <input type="file" id="edit-post-music-file" accept="audio/*" /><br />
+        -->
+        <button type="submit">수정</button>
+      </form>
+    </div>
+    <script src="js/editPost.js"></script>
+  </body>
+</html>
+
+
+파일경로: frontend\guitar.html
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Chord Craft 메인페이지</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <a href="guitar.html" class="logo">WebGuitar</a>
+    <h1>Virtual Guitar 연주</h1>
+
+    <!-- 프로필, 게시판 이동 버튼 추가 -->
+    <div id="nav-buttons" style="margin-bottom: 20px">
+      <a href="profile.html"><button>프로필 페이지</button></a>
+      <a href="board.html"><button>게시판 페이지</button></a>
+    </div>
+
+    <div id="current-chord-display">선택된 코드: 없음</div>
+
+    <div id="recording-status"></div>
+    <button id="record-button">녹음 시작</button>
+
+    <!-- 악보 업로드 -->
+    <form id="sheet-upload-form">
+      <input type="file" id="sheet-file" accept="image/*" />
+      <button type="submit">악보 업로드</button>
+    </form>
+    <img id="sheet-music" alt="악보" />
+
+    <div id="guitar">
+      <div id="guitar-body">
+        <div class="string" data-string="6"></div>
+        <div class="string" data-string="5"></div>
+        <div class="string" data-string="4"></div>
+        <div class="string" data-string="3"></div>
+        <div class="string" data-string="2"></div>
+        <div class="string" data-string="1"></div>
+      </div>
+    </div>
+
+    <h2>키보드 설정</h2>
+    <form id="keyboard-settings-form">
+      <label for="code-keys">코드 선택 키:</label>
+      <input type="text" id="code-keys" value="C,D,E,F,G,A,B" />
+      <label for="chord-type-keys">코드 모드 키:</label>
+      <input type="text" id="chord-type-keys" value="1,2,3,4,5,6" />
+      <label for="string-keys">연주 키:</label>
+      <input type="text" id="string-keys" value="u,i,o,p,[,]" />
+      <button type="submit">설정 저장</button>
+    </form>
+
+    <div>
+      <h3>코드 모드 키 설명</h3>
+      <ul>
+        <li>1: Major</li>
+        <li>2: 7</li>
+        <li>3: m</li>
+        <li>4: M7</li>
+        <li>5: m7</li>
+        <li>6: Barre Chord</li>
+      </ul>
+      <p>예: C + 3 => Cm 코드</p>
+    </div>
+
+    <h2>악기 선택</h2>
+    <div id="instruments">
+      <select id="instrument-select">
+        <option value="guitar">기타</option>
+        <option value="piano">피아노</option>
+        <option value="violin">바이올린</option>
+      </select>
+    </div>
+
+    <script type="module" src="js/guitar.js"></script>
+  </body>
+</html>
+
+
+파일경로: frontend\index.html
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Chord Craft 시작페이지</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+      }
+      .logo-area img {
+        width: 600px;
+        display: block;
+        margin: 0 auto;
+      }
+      .form-area {
+        text-align: center;
+      }
+      #register-form {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="logo-area">
+      <img src="logo.png" alt="프로젝트 로고" />
+      <h1>Chord Craft</h1>
+    </div>
+    <div class="form-area">
+      <form id="login-form">
+        <input
+          type="text"
+          id="login-username"
+          placeholder="아이디"
+          required
+        /><br />
+        <input
+          type="password"
+          id="login-password"
+          placeholder="비밀번호"
+          required
+        /><br />
+        <button type="submit">로그인</button>
+      </form>
+      <button id="show-register">회원가입</button>
+
+      <form id="register-form">
+        <input
+          type="text"
+          id="register-username"
+          placeholder="아이디"
+          required
+        /><br />
+        <input
+          type="password"
+          id="register-password"
+          placeholder="비밀번호"
+          required
+        /><br />
+        <input
+          type="text"
+          id="register-nickname"
+          placeholder="닉네임"
+          required
+        /><br />
+        <button type="submit">회원가입</button>
+      </form>
+    </div>
+
+    <script>
+      document.getElementById("show-register").addEventListener("click", () => {
+        document.getElementById("register-form").style.display = "block";
+      });
+    </script>
+    <script src="js/auth.js"></script>
+  </body>
+</html>
+
+
+파일경로: frontend\newPost.html
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>새 글 작성</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+      .form-container {
+        width: 80%;
+        margin: 20px auto;
+      }
+      .form-container input[type="text"],
+      .form-container textarea {
+        width: 100%;
+        margin-bottom: 10px;
+      }
+      .form-container button {
+        float: right;
+      }
+    </style>
+  </head>
+  <body>
+    <a href="guitar.html" class="logo">WebGuitar</a>
+    <h1 style="text-align: center">새 게시글 작성</h1>
+    <div class="form-container">
+      <form id="new-post-form">
+        <input
+          type="text"
+          id="new-post-title"
+          placeholder="제목"
+          required
+        /><br />
+        <textarea id="new-post-content" placeholder="내용" required></textarea
+        ><br />
+        <input type="file" id="new-post-music-file" accept="audio/*" /><br />
+        <button type="submit">작성</button>
+      </form>
+    </div>
+    <script src="js/newPost.js"></script>
+  </body>
+</html>
+
+
+파일경로: frontend\postDetail.html
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>게시글 상세보기</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+      .post-detail-container {
+        width: 80%;
+        margin: 20px auto;
+      }
+      .post-info {
+        border-bottom: 1px solid #ccc;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+      }
+      .post-info h1 {
+        margin-bottom: 10px;
+      }
+      .post-meta {
+        color: #666;
+        font-size: 14px;
+        margin-bottom: 10px;
+      }
+      .post-content-section {
+        margin-bottom: 20px;
+      }
+      .post-buttons {
+        margin-bottom: 20px;
+      }
+      .comment-section {
+        margin-top: 40px;
+      }
+      .comment-section h3 {
+        margin-bottom: 10px;
+      }
+      .comment {
+        border-bottom: 1px solid #ccc;
+        padding: 5px 0;
+      }
+      .comment-author {
+        font-weight: bold;
+      }
+      .comment-form textarea {
+        width: 100%;
+        margin-bottom: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <a href="guitar.html" class="logo">WebGuitar</a>
+    <div class="post-detail-container">
+      <!-- 제목 -->
+      <h1 id="post-title"></h1>
+
+      <!-- 작성자/작성시간/수정/삭제를 한 줄로 정렬 -->
+      <div
+        class="post-header"
+        style="
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        "
+      >
+        <div class="post-meta">
+          작성자: <span id="post-author"></span> | 작성시간:
+          <span id="post-date"></span>
+        </div>
+        <div class="post-actions">
+          <button id="edit-button" style="display: none">수정</button>
+          <button id="delete-button" style="display: none">삭제</button>
+        </div>
+      </div>
+
+      <div class="post-content-section">
+        <p id="post-content"></p>
+      </div>
+
+      <div id="post-music"></div>
+
+      <div class="post-buttons">
+        <span>좋아요: <span id="like-count"></span></span>
+        <button id="like-button">좋아요</button>
+        <!-- 수정/삭제 버튼은 위로 옮겨서 post-actions에 넣었으므로 여기서는 제거 -->
+      </div>
+
+      <div class="comment-section">
+        <h3>댓글</h3>
+        <div id="comment-list"></div>
+        <div class="comment-form">
+          <textarea id="comment-content" placeholder="댓글 내용"></textarea
+          ><br />
+          <button id="comment-submit">댓글 달기</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="js/postDetail.js"></script>
+  </body>
+</html>
+
+
+파일경로: frontend\profile.html
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>프로필</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+      .profile-image-modal {
+        display: none;
+        position: fixed;
+        top: 20%;
+        left: 40%;
+        background: #fff;
+        border: 1px solid #ccc;
+        padding: 10px;
+        z-index: 999;
+      }
+      .profile-image-modal img {
+        width: 50px;
+        height: 50px;
+        margin: 5px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <a href="guitar.html" class="logo">WebGuitar</a>
+    <h1>프로필 페이지</h1>
+    <div class="profile-info">
+      <!-- 기본 프로필 이미지 경로를 절대경로로 지정 -->
+      <img
+        id="profile-picture"
+        src="/assets/images/profiles/default-profile.png"
+        alt="프로필사진"
+        width="100"
+        height="100"
+      />
+      <p>닉네임: <span id="nickname-display"></span></p>
+      <a href="board.html">내 게시판</a>
+    </div>
+    <button id="change-profile-pic">프로필 사진 변경</button>
+
+    <div class="profile-image-modal" id="profile-image-modal">
+      <h4>프로필 이미지 선택</h4>
+      <div id="profile-image-list">
+        <!-- 절대 경로로 지정, data-img도 절대 경로 -->
+        <img
+          src="/assets/images/profiles/img1.png"
+          data-img="/assets/images/profiles/img1.png"
+        />
+        <img
+          src="/assets/images/profiles/img2.png"
+          data-img="/assets/images/profiles/img2.png"
+        />
+        <img
+          src="/assets/images/profiles/img3.png"
+          data-img="/assets/images/profiles/img3.png"
+        />
+      </div>
+      <button id="close-modal">닫기</button>
+    </div>
+
+    <h2>내 음악 목록</h2>
+    <ul id="music-list"></ul>
+
+    <h2>비밀번호 변경</h2>
+    <form id="change-password-form">
+      <input
+        type="password"
+        id="old-password"
+        placeholder="기존 비밀번호"
+        required
+      />
+      <input
+        type="password"
+        id="new-password"
+        placeholder="새 비밀번호"
+        required
+      />
+      <button type="submit">변경</button>
+    </form>
+
+    <button id="delete-account">회원탈퇴</button>
+    <script src="js/profile.js"></script>
+  </body>
+</html>
+
+
+파일경로: frontend\upload.html
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>음악 업로드</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <a href="guitar.html" class="logo">WebGuitar</a>
+    <h1>음악 업로드</h1>
+    <form id="upload-form">
+      <input type="text" id="music-title" placeholder="음악 제목" required />
+      <input type="file" id="music-file" accept="audio/*" required />
+      <button type="submit">업로드</button>
+    </form>
+    <script src="js/upload.js"></script>
+  </body>
+</html>
+
+
+파일경로: frontend\js\auth.js
+// frontend/js/auth.js
+
+const SERVER_URL = "http://localhost:5000";
+
+// 로그인 이벤트
+document.getElementById("login-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const username = document.getElementById("login-username").value;
+  const password = document.getElementById("login-password").value;
+
+  const response = await fetch(`${SERVER_URL}/api/users/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+
+  const data = await response.json();
+  if (response.ok) {
+    alert(data.message);
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("userId", data.userId);
+    window.location.href = "guitar.html";
+  } else {
+    alert(data.message);
+  }
+});
+
+// 회원가입 이벤트
+document
+  .getElementById("register-form")
+  .addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const username = document.getElementById("register-username").value;
+    const password = document.getElementById("register-password").value;
+    const nickname = document.getElementById("register-nickname").value;
+
+    const response = await fetch(`${SERVER_URL}/api/users/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password, nickname }),
+    });
+
+    const data = await response.json();
+    alert(data.message);
+  });
+
+
+파일경로: frontend\js\board.js
+const SERVER_URL = "http://localhost:5000";
+const token = localStorage.getItem("token");
+
+async function loadPosts() {
+  const response = await fetch(`${SERVER_URL}/api/posts`);
+  const data = await response.json();
+  const boardList = document.getElementById("board-list");
+  boardList.innerHTML = "";
+
+  data.posts.forEach((post, index) => {
+    const tr = document.createElement("tr");
+
+    const noTd = document.createElement("td");
+    noTd.textContent = data.posts.length - index;
+    tr.appendChild(noTd);
+
+    const titleTd = document.createElement("td");
+    const titleLink = document.createElement("a");
+    titleLink.href = `postDetail.html?postId=${post._id}`;
+    titleLink.textContent = post.title || "제목 없음";
+    titleTd.appendChild(titleLink);
+    tr.appendChild(titleTd);
+
+    const authorTd = document.createElement("td");
+    authorTd.textContent = post.author ? post.author.nickname : "알 수 없음";
+    tr.appendChild(authorTd);
+
+    const createdAtTd = document.createElement("td");
+    const date = new Date(post.createdAt);
+    createdAtTd.textContent = date.toLocaleString();
+    tr.appendChild(createdAtTd);
+
+    const likesTd = document.createElement("td");
+    likesTd.textContent = 0; // likes 필드 미구현, 필요시 확장
+    tr.appendChild(likesTd);
+
+    boardList.appendChild(tr);
+  });
+}
+
+window.onload = () => {
+  loadPosts();
+};
+
+
+파일경로: frontend\js\chords.js
+// chords.js
+
+// 기타 코드 데이터베이스
+const chordData = {
+  C: {
+    1: [0, 3, 2, 0, 1, 0], // C Major
+    2: [0, 3, 2, 3, 1, 0], // C7
+    3: [3, 3, 5, 5, 4, 3], // Cm
+    4: [0, 3, 2, 0, 0, 0], // CM7 (C Major 7)
+    5: [3, 3, 5, 3, 4, 3], // Cm7 (C Minor 7)
+    6: [3, 3, 5, 5, 5, 3], // C Barre Chord
+  },
+  D: {
+    1: [0, 0, 0, 2, 3, 2], // D Major
+    2: [0, 0, 0, 2, 1, 2], // D7
+    3: [0, 0, 0, 2, 3, 1], // Dm
+    4: [0, 0, 0, 2, 2, 2], // DM7 (D Major 7)
+    5: [0, 0, 0, 2, 1, 1], // Dm7 (D Minor 7)
+    6: [5, 5, 7, 7, 7, 5], // D Barre Chord
+  },
+  E: {
+    1: [0, 2, 2, 1, 0, 0], // E Major
+    2: [0, 2, 0, 1, 0, 0], // E7
+    3: [0, 2, 2, 0, 0, 0], // Em
+    4: [0, 2, 1, 1, 0, 0], // EM7 (E Major 7)
+    5: [0, 2, 0, 0, 0, 0], // Em7 (E Minor 7)
+    6: [0, 7, 9, 9, 9, 7], // E Barre Chord
+  },
+  F: {
+    1: [1, 3, 3, 2, 1, 1], // F Major
+    2: [1, 3, 1, 2, 1, 1], // F7
+    3: [1, 3, 3, 1, 1, 1], // Fm
+    4: [0, 0, 3, 2, 1, 0], // FM7 (F Major 7)
+    5: [1, 3, 1, 1, 1, 1], // Fm7 (F Minor 7)
+    6: [1, 3, 3, 2, 1, 1], // F Barre Chord
+  },
+  G: {
+    1: [3, 2, 0, 0, 0, 3], // G Major
+    2: [3, 2, 0, 0, 0, 1], // G7
+    3: [3, 5, 5, 3, 3, 3], // Gm
+    4: [3, 2, 0, 0, 0, 2], // GM7 (G Major 7)
+    5: [3, 5, 3, 3, 3, 3], // Gm7 (G Minor 7)
+    6: [3, 5, 5, 4, 3, 3], // G Barre Chord
+  },
+  A: {
+    1: [0, 0, 2, 2, 2, 0], // A Major
+    2: [0, 0, 2, 0, 2, 0], // A7
+    3: [0, 0, 2, 2, 1, 0], // Am
+    4: [0, 0, 2, 1, 2, 0], // AM7 (A Major 7)
+    5: [0, 0, 2, 0, 1, 0], // Am7 (A Minor 7)
+    6: [5, 7, 7, 6, 5, 5], // A Barre Chord
+  },
+  B: {
+    1: [2, 2, 4, 4, 4, 2], // B Major
+    2: [0, 2, 1, 2, 0, 2], // B7
+    3: [2, 2, 4, 4, 3, 2], // Bm
+    4: [2, 2, 4, 3, 4, 2], // BM7 (B Major 7)
+    5: [2, 2, 4, 2, 3, 2], // Bm7 (B Minor 7)
+    6: [2, 2, 4, 4, 4, 2], // B Barre Chord
+  },
+};
+
+// 다른 파일에서 사용할 수 있도록 내보내기
+export { chordData };
+
+
+파일경로: frontend\js\editPost.js
+// frontend/js/editPost.js
+const SERVER_URL = "http://localhost:5000";
+const token = localStorage.getItem("token");
+
+if (!token) {
+  alert("로그인이 필요합니다.");
+  window.location.href = "index.html";
+}
+
+let currentPostId = null;
+
+async function loadPostData() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const postId = urlParams.get("postId");
+  currentPostId = postId;
+  if (!postId) {
+    alert("잘못된 접근입니다.");
+    window.location.href = "board.html";
+    return;
+  }
+
+  const response = await fetch(`${SERVER_URL}/api/posts/${postId}`);
+  const data = await response.json();
+  if (!response.ok) {
+    alert(data.message);
+    window.location.href = "board.html";
+    return;
+  }
+
+  const post = data.post;
+  document.getElementById("edit-post-title").value = post.title;
+  document.getElementById("edit-post-content").value = post.content;
+}
+
+document
+  .getElementById("edit-post-form")
+  .addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const title = document.getElementById("edit-post-title").value;
+    const content = document.getElementById("edit-post-content").value;
+
+    const response = await fetch(`${SERVER_URL}/api/posts/${currentPostId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ title, content }),
+    });
+
+    const resData = await response.json();
+    alert(resData.message);
+    if (response.ok) {
+      window.location.href = `postDetail.html?postId=${currentPostId}`;
+    }
+  });
+
+window.onload = () => {
+  loadPostData();
+};
+
+
+파일경로: frontend\js\frequencies.js
+// frequencies.js
+
+// 기타 현별 기본 주파수 설정 (6현부터 1현까지)
+const stringFrequencies = {
+  6: {
+    0: 82.41, // 개방현 (6번 현 개방)
+    1: 87.31, // 1번 프랫
+    2: 92.5, // 2번 프랫
+    3: 98.0, // 3번 프랫
+    4: 103.83, // 4번 프랫
+    5: 110.0, // 5번 프랫
+  },
+  5: {
+    0: 110.0, // 개방현 (5번 현 개방)
+    1: 116.54, // 1번 프랫
+    2: 123.47, // 2번 프랫
+    3: 130.81, // 3번 프랫
+    4: 138.59, // 4번 프랫
+    5: 146.83, // 5번 프랫
+  },
+  4: {
+    0: 146.83, // 개방현 (4번 현 개방)
+    1: 155.56, // 1번 프랫
+    2: 164.81, // 2번 프랫
+    3: 174.61, // 3번 프랫
+    4: 185.0, // 4번 프랫
+    5: 196.0, // 5번 프랫
+  },
+  3: {
+    0: 196.0, // 개방현 (3번 현 개방)
+    1: 207.65, // 1번 프랫
+    2: 220.0, // 2번 프랫
+    3: 233.08, // 3번 프랫
+    4: 246.94, // 4번 프랫
+    5: 261.63, // 5번 프랫
+  },
+  2: {
+    0: 246.94, // 개방현 (2번 현 개방)
+    1: 261.63, // 1번 프랫
+    2: 277.18, // 2번 프랫
+    3: 293.66, // 3번 프랫
+    4: 311.13, // 4번 프랫
+    5: 329.63, // 5번 프랫
+  },
+  1: {
+    0: 329.63, // 개방현 (1번 현 개방)
+    1: 349.23, // 1번 프랫
+    2: 369.99, // 2번 프랫
+    3: 392.0, // 3번 프랫
+    4: 415.3, // 4번 프랫
+    5: 440.0, // 5번 프랫
+  },
+};
+
+export { stringFrequencies };
+
+
+파일경로: frontend\js\guitar.js
+import { chordData } from "./chords.js";
+import { stringFrequencies } from "./frequencies.js";
+
+const SERVER_URL = "http://localhost:5000";
+
+const token = localStorage.getItem("token");
+if (!token) {
+  alert("로그인이 필요합니다.");
+  window.location.href = "index.html";
+}
+
+// 로고 클릭 시 메인페이지(guitar.html)로
+document.querySelector(".logo").addEventListener("click", () => {
+  window.location.href = "guitar.html";
+});
+
+let codeKeys = ["C", "D", "E", "F", "G", "A", "B"];
+let chordTypeKeys = ["1", "2", "3", "4", "5", "6"];
+let stringKeys = ["u", "i", "o", "p", "[", "]"];
+
+function loadSettings() {
+  const savedCodeKeys = localStorage.getItem("codeKeys");
+  const savedChordTypeKeys = localStorage.getItem("chordTypeKeys");
+  const savedStringKeys = localStorage.getItem("stringKeys");
+
+  if (savedCodeKeys) {
+    codeKeys = savedCodeKeys.split(",");
+    document.getElementById("code-keys").value = codeKeys.join(",");
+  }
+
+  if (savedChordTypeKeys) {
+    chordTypeKeys = savedChordTypeKeys.split(",");
+    document.getElementById("chord-type-keys").value = chordTypeKeys.join(",");
+  }
+
+  if (savedStringKeys) {
+    stringKeys = savedStringKeys.split(",");
+    document.getElementById("string-keys").value = stringKeys.join(",");
+  }
+}
+loadSettings();
+
+function saveSettings() {
+  localStorage.setItem("codeKeys", codeKeys.join(","));
+  localStorage.setItem("chordTypeKeys", chordTypeKeys.join(","));
+  localStorage.setItem("stringKeys", stringKeys.join(","));
+}
+
+// 키보드 설정 저장
+document
+  .getElementById("keyboard-settings-form")
+  .addEventListener("submit", (e) => {
+    e.preventDefault();
+    codeKeys = document.getElementById("code-keys").value.split(",");
+    chordTypeKeys = document.getElementById("chord-type-keys").value.split(",");
+    stringKeys = document.getElementById("string-keys").value.split(",");
+    saveSettings();
+    alert("키보드 설정이 저장되었습니다.");
+  });
+
+// 코드/현 상태
+let currentChord = null;
+let currentChordType = null;
+let isRecording = false;
+let mediaRecorder;
+let recordedChunks = [];
+let audioContext = null; // AudioContext를 아직 생성하지 않음
+let dest = null; // 녹음용 MediaStreamDestination
+
+const activeStrings = new Set();
+
+// 사용자 인터랙션 시 AudioContext 생성 및 resume
+document.addEventListener(
+  "click",
+  async () => {
+    if (!audioContext) {
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioContext.state === "suspended") {
+      await audioContext.resume();
+      console.log("AudioContext resumed after user interaction.");
+    }
+  },
+  { once: true }
+);
+
+document.addEventListener("keydown", (e) => {
+  const upperKey = e.key.toUpperCase();
+  const lowerKey = e.key.toLowerCase();
+
+  // 코드 키 처리: 바로 currentChord에 반영
+  if (codeKeys.includes(upperKey)) {
+    currentChord = upperKey;
+    updateChord();
+  }
+
+  // 코드 모드 키 처리: 바로 currentChordType에 반영
+  if (chordTypeKeys.includes(lowerKey)) {
+    currentChordType = lowerKey;
+    updateChord();
+  }
+
+  // 현 연주 키 처리
+  if (stringKeys.includes(lowerKey)) {
+    activeStrings.add(lowerKey);
+    console.log(`KeyDown: ${lowerKey} (stringKeys)`);
+    playString(lowerKey);
+  }
+});
+
+document.addEventListener("keyup", (e) => {
+  const lowerKey = e.key.toLowerCase();
+
+  // 현 키는 뗄 때 제거
+  if (stringKeys.includes(lowerKey)) {
+    activeStrings.delete(lowerKey);
+  }
+});
+
+function updateChord() {
+  console.log("updateChord:", { currentChord, currentChordType });
+  displayCurrentChord();
+}
+
+function displayCurrentChord() {
+  const displayElement = document.getElementById("current-chord-display");
+  if (currentChord && currentChordType) {
+    let chordTypeName = getChordTypeName(currentChordType);
+    displayElement.textContent = `선택된 코드: ${currentChord}${chordTypeName}`;
+  } else if (currentChord && !currentChordType) {
+    // 코드만 있고 코드 타입이 없을 수도 있으므로 처리
+    displayElement.textContent = `선택된 코드: ${currentChord}`;
+  } else {
+    displayElement.textContent = "선택된 코드: 없음";
+  }
+}
+
+function getChordTypeName(chordTypeKey) {
+  const chordTypeNames = {
+    1: "",
+    2: "7",
+    3: "m",
+    4: "M7",
+    5: "m7",
+    6: " (Barre)",
+  };
+  return chordTypeNames[chordTypeKey] || "";
+}
+
+function playString(key) {
+  if (!audioContext || audioContext.state !== "running") {
+    console.log("AudioContext not running, cannot play");
+    return;
+  }
+
+  const index = stringKeys.indexOf(key);
+  if (index === -1) {
+    console.log(`Invalid key: ${key}, no stringNumber found in stringKeys`);
+    return;
+  }
+
+  // stringKeys[0] -> 6번 현, stringKeys[1] -> 5번 현 ... stringKeys[5] -> 1번 현
+  const stringNumber = (6 - index).toString();
+
+  let fretNumber = 0;
+  if (currentChord && currentChordType) {
+    const chord = chordData[currentChord][currentChordType];
+    if (chord) {
+      fretNumber = chord[6 - parseInt(stringNumber)];
+    } else {
+      fretNumber = 0;
+    }
+  } else {
+    fretNumber = 0;
+  }
+
+  // fretNumber 범위 확인 (0~5 범위 내로)
+  if (fretNumber < 0 || fretNumber > 5) {
+    fretNumber = 0;
+  }
+
+  const baseFrequency = stringFrequencies[parseInt(stringNumber)];
+  if (!baseFrequency) {
+    console.log(`No baseFrequency for string ${stringNumber}`);
+    return;
+  }
+
+  const frequency = baseFrequency[fretNumber];
+
+  console.log(
+    `playString: chord=${currentChord}, type=${currentChordType}, string=${stringNumber}, fret=${fretNumber}, frequency=${frequency}`
+  );
+
+  if (!frequency) {
+    console.log("No frequency found for this fret, just animating string");
+    animateString(stringNumber);
+    return;
+  }
+
+  playGuitarSound(frequency);
+  animateString(stringNumber);
+}
+
+function playGuitarSound(frequency) {
+  if (!audioContext || audioContext.state !== "running") {
+    console.log("AudioContext not running in playGuitarSound");
+    return;
+  }
+
+  console.log(`playGuitarSound: frequency=${frequency}Hz`);
+
+  const now = audioContext.currentTime;
+  const oscillator = audioContext.createOscillator();
+  oscillator.type = "sawtooth";
+  const filter = audioContext.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.setValueAtTime(1000, now);
+  const gainNode = audioContext.createGain();
+  gainNode.gain.setValueAtTime(1, now);
+  gainNode.gain.exponentialRampToValueAtTime(0.001, now + 2);
+  oscillator.frequency.setValueAtTime(frequency, now);
+  oscillator.connect(filter);
+  filter.connect(gainNode);
+
+  // 기존 destination 출력
+  gainNode.connect(audioContext.destination);
+
+  // dest가 존재하면 녹음용 dest에도 연결
+  if (dest) {
+    gainNode.connect(dest);
+  }
+
+  oscillator.start(now);
+  oscillator.stop(now + 2);
+}
+
+function animateString(stringNumber) {
+  const stringElement = document.querySelector(
+    `.string[data-string="${stringNumber}"]`
+  );
+  if (!stringElement) return;
+  stringElement.classList.add("active");
+  setTimeout(() => {
+    stringElement.classList.remove("active");
+  }, 200);
+}
+
+// 녹음
+document.getElementById("record-button").addEventListener("click", () => {
+  isRecording = !isRecording;
+  const recordButton = document.getElementById("record-button");
+  recordButton.textContent = isRecording ? "녹음 중지" : "녹음 시작";
+
+  if (isRecording) {
+    startRecording();
+  } else {
+    stopRecording();
+  }
+});
+
+async function startRecording() {
+  if (!audioContext || audioContext.state !== "running") {
+    console.log("AudioContext not running, cannot start recording");
+    return;
+  }
+
+  recordedChunks = [];
+  dest = audioContext.createMediaStreamDestination();
+  mediaRecorder = new MediaRecorder(dest.stream);
+  mediaRecorder.ondataavailable = (e) => {
+    if (e.data.size > 0) {
+      recordedChunks.push(e.data);
+    }
+  };
+  mediaRecorder.start();
+}
+
+function stopRecording() {
+  if (!mediaRecorder) return;
+  mediaRecorder.stop();
+  mediaRecorder.onstop = () => {
+    // webm 형식으로 Blob 생성
+    const blob = new Blob(recordedChunks, { type: "audio/webm" });
+    const url = URL.createObjectURL(blob);
+
+    const playbackButton = document.createElement("button");
+    playbackButton.textContent = "녹음 재생";
+    playbackButton.onclick = () => {
+      const audio = new Audio(url);
+      audio.play();
+    };
+
+    const downloadButton = document.createElement("a");
+    downloadButton.href = url;
+    downloadButton.download = "recorded.webm";
+    downloadButton.textContent = "다운로드";
+
+    const recordingStatus = document.getElementById("recording-status");
+    recordingStatus.textContent = "";
+    recordingStatus.appendChild(playbackButton);
+    recordingStatus.appendChild(document.createTextNode(" "));
+    recordingStatus.appendChild(downloadButton);
+  };
+}
+
+// 악보 업로드
+document.getElementById("sheet-upload-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const fileInput = document.getElementById("sheet-file");
+  const file = fileInput.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    const img = document.getElementById("sheet-music");
+    img.src = event.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+// 악기 선택(추가 예정)
+document.getElementById("instrument-select").addEventListener("change", (e) => {
+  alert(e.target.value + "는 아직 구현되지 않았습니다.");
+});
+
+
+파일경로: frontend\js\newPost.js
+const SERVER_URL = "http://localhost:5000";
+const token = localStorage.getItem("token");
+
+document
+  .getElementById("new-post-form")
+  .addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const title = document.getElementById("new-post-title").value;
+    const content = document.getElementById("new-post-content").value;
+    const file = document.getElementById("new-post-music-file").files[0];
+
+    const formData = new FormData();
+    formData.append("title", title);
+    formData.append("content", content);
+    if (file) formData.append("music", file);
+
+    const response = await fetch(`${SERVER_URL}/api/posts`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+
+    const resData = await response.json();
+    alert(resData.message);
+    if (response.ok) {
+      window.location.href = "board.html";
+    }
+  });
+
+
+파일경로: frontend\js\postDetail.js
+// frontend/js/postDetail.js
+const SERVER_URL = "http://localhost:5000";
+const token = localStorage.getItem("token");
+let currentPostId = null;
+let currentUserId = localStorage.getItem("userId"); // 로그인한 사용자 ID
+
+async function loadPostDetail() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const postId = urlParams.get("postId");
+  currentPostId = postId;
+  if (!postId) {
+    alert("잘못된 접근입니다.");
+    window.location.href = "board.html";
+    return;
+  }
+
+  const response = await fetch(`${SERVER_URL}/api/posts/${postId}`);
+  const data = await response.json();
+  if (!response.ok) {
+    alert(data.message);
+    window.location.href = "board.html";
+    return;
+  }
+
+  const post = data.post;
+  document.getElementById("post-title").textContent = post.title;
+  document.getElementById("post-author").textContent = `작성자: ${
+    post.author ? post.author.nickname : "알 수 없음"
+  }`;
+  const date = new Date(post.createdAt);
+  document.getElementById(
+    "post-date"
+  ).textContent = `작성시간: ${date.toLocaleString()}`;
+  document.getElementById("post-content").textContent = post.content;
+  document.getElementById("like-count").textContent = post.likeCount || 0;
+
+  const postMusicDiv = document.getElementById("post-music");
+  postMusicDiv.innerHTML = "";
+  if (post.musicFileUrl) {
+    const playButton = document.createElement("button");
+    playButton.textContent = "음악 재생";
+    playButton.onclick = () => {
+      const audio = new Audio(`${SERVER_URL}${post.musicFileUrl}`);
+      audio.play();
+    };
+    postMusicDiv.appendChild(playButton);
+  }
+
+  // 댓글 표시
+  const commentListDiv = document.getElementById("comment-list");
+  commentListDiv.innerHTML = "";
+  post.comments.forEach((comment) => {
+    const div = document.createElement("div");
+    div.classList.add("comment");
+    const authorName = comment.author ? comment.author.nickname : "알 수 없음";
+    div.innerHTML = `<span class="comment-author">${authorName}</span>: ${comment.content}`;
+
+    // 댓글 작성자 본인이면 수정/삭제 버튼 표시
+    if (comment.author && comment.author._id === currentUserId) {
+      // 오른쪽 끝에 버튼을 배치하기 위한 컨테이너
+      const btnContainer = document.createElement("span");
+      btnContainer.style.float = "right";
+      btnContainer.style.marginLeft = "10px";
+
+      const editCommentBtn = document.createElement("button");
+      editCommentBtn.textContent = "댓글 수정";
+      editCommentBtn.onclick = async () => {
+        const newContent = prompt("새 댓글 내용을 입력하세요", comment.content);
+        if (!newContent) return;
+        const res = await fetch(
+          `${SERVER_URL}/api/posts/${currentPostId}/comments/${comment._id}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ content: newContent }),
+          }
+        );
+        const resData = await res.json();
+        if (res.ok) {
+          alert(resData.message);
+          window.location.reload();
+        } else {
+          alert(resData.message);
+        }
+      };
+      btnContainer.appendChild(editCommentBtn);
+
+      const deleteCommentBtn = document.createElement("button");
+      deleteCommentBtn.textContent = "댓글 삭제";
+      deleteCommentBtn.onclick = async () => {
+        if (!confirm("댓글을 삭제하시겠습니까?")) return;
+        const res = await fetch(
+          `${SERVER_URL}/api/posts/${currentPostId}/comments/${comment._id}`,
+          {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        const resData = await res.json();
+        if (res.ok) {
+          alert(resData.message);
+          window.location.reload();
+        } else {
+          alert(resData.message);
+        }
+      };
+      btnContainer.appendChild(deleteCommentBtn);
+
+      div.appendChild(btnContainer);
+    }
+
+    commentListDiv.appendChild(div);
+  });
+
+  // 작성자 본인이면 수정/삭제 버튼 노출
+  if (post.author && post.author._id === currentUserId) {
+    document.getElementById("edit-button").style.display = "inline-block";
+    document.getElementById("delete-button").style.display = "inline-block";
+  }
+}
+
+document
+  .getElementById("comment-submit")
+  .addEventListener("click", async () => {
+    const content = document.getElementById("comment-content").value.trim();
+    if (!content) {
+      alert("댓글 내용을 입력하세요.");
+      return;
+    }
+
+    const res = await fetch(
+      `${SERVER_URL}/api/posts/${currentPostId}/comments`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ content }),
+      }
+    );
+
+    const resData = await res.json();
+    if (res.ok) {
+      alert(resData.message);
+      window.location.reload();
+    } else {
+      alert(resData.message);
+    }
+  });
+
+document.getElementById("like-button").addEventListener("click", async () => {
+  const res = await fetch(`${SERVER_URL}/api/posts/${currentPostId}/like`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (res.ok) {
+    document.getElementById("like-count").textContent = data.likeCount;
+  } else {
+    alert(data.message);
+  }
+});
+
+document.getElementById("edit-button").addEventListener("click", () => {
+  // 수정 버튼 클릭 시 editPost.html로 이동
+  window.location.href = `editPost.html?postId=${currentPostId}`;
+});
+
+document.getElementById("delete-button").addEventListener("click", async () => {
+  if (!confirm("정말 삭제하시겠습니까?")) return;
+
+  const res = await fetch(`${SERVER_URL}/api/posts/${currentPostId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (res.ok) {
+    alert(data.message);
+    window.location.href = "board.html";
+  } else {
+    alert(data.message);
+  }
+});
+
+window.onload = () => {
+  loadPostDetail();
+};
+
+
+파일경로: frontend\js\profile.js
+// frontend/js/profile.js
+const SERVER_URL = "http://localhost:5000";
+const token = localStorage.getItem("token");
+
+if (!token) {
+  alert("로그인이 필요합니다.");
+  window.location.href = "index.html";
+}
+
+window.onload = async () => {
+  const response = await fetch(`${SERVER_URL}/api/users/profile`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = await response.json();
+  if (response.ok) {
+    // 프로필 정보 표시
+    document.getElementById("nickname-display").textContent =
+      data.user.nickname;
+
+    let profilePicPath = data.user.profilePicture
+      ? data.user.profilePicture
+      : "/assets/images/profiles/default-profile.png";
+
+    // 프로필 이미지는 SERVER_URL + 절대경로 로드
+    document.getElementById("profile-picture").src =
+      SERVER_URL + profilePicPath;
+
+    const musicList = document.getElementById("music-list");
+    data.user.uploads.forEach((music) => {
+      const listItem = document.createElement("li");
+      listItem.textContent = music.title;
+      const playButton = document.createElement("button");
+      playButton.textContent = "재생";
+      playButton.onclick = () => {
+        const audio = new Audio(`${SERVER_URL}${music.fileUrl}`);
+        audio.play();
+      };
+      listItem.appendChild(playButton);
+      musicList.appendChild(listItem);
+    });
+  } else {
+    alert(data.message);
+  }
+};
+
+// 비밀번호 변경
+document
+  .getElementById("change-password-form")
+  .addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const oldPassword = document.getElementById("old-password").value;
+    const newPassword = document.getElementById("new-password").value;
+    const response = await fetch(`${SERVER_URL}/api/users/change-password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ oldPassword, newPassword }),
+    });
+    const data = await response.json();
+    alert(data.message);
+  });
+
+// 회원탈퇴
+document
+  .getElementById("delete-account")
+  .addEventListener("click", async () => {
+    if (!confirm("정말 회원탈퇴 하시겠습니까?")) return;
+    const response = await fetch(`${SERVER_URL}/api/users/delete`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await response.json();
+    alert(data.message);
+    if (response.ok) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("userId");
+      window.location.href = "index.html";
+    }
+  });
+
+// 프로필 사진 변경 모달
+const modal = document.getElementById("profile-image-modal");
+const changeBtn = document.getElementById("change-profile-pic");
+const closeModalBtn = document.getElementById("close-modal");
+const profileImageList = document.getElementById("profile-image-list");
+
+changeBtn.addEventListener("click", () => {
+  modal.style.display = "block";
+});
+
+closeModalBtn.addEventListener("click", () => {
+  modal.style.display = "none";
+});
+
+profileImageList.addEventListener("click", async (e) => {
+  if (e.target.tagName === "IMG") {
+    const selectedImg = e.target.getAttribute("data-img");
+    // 프로필 사진 업데이트 요청
+    const res = await fetch(`${SERVER_URL}/api/users/profile-picture`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ profilePicture: selectedImg }),
+    });
+    const resData = await res.json();
+    alert(resData.message);
+    if (res.ok) {
+      document.getElementById("profile-picture").src = SERVER_URL + selectedImg;
+      modal.style.display = "none";
+    }
+  }
+});
+
+
+파일경로: frontend\js\upload.js
+const SERVER_URL = "http://localhost:5000";
+const token = localStorage.getItem("token");
+
+if (!token) {
+  alert("로그인이 필요합니다.");
+  window.location.href = "index.html";
+}
+
+document.getElementById("upload-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const title = document.getElementById("music-title").value;
+  const fileInput = document.getElementById("music-file");
+
+  const formData = new FormData();
+  formData.append("title", title);
+  formData.append("music", fileInput.files[0]);
+
+  const response = await fetch(`${SERVER_URL}/api/music/upload`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  });
+
+  const data = await response.json();
+  alert(data.message);
+});
+
+

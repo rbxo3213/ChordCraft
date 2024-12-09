@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>게시판</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+      table {
+        width: 80%;
+        margin: 20px auto;
+        border-collapse: collapse;
+        table-layout: fixed;
+      }
+      colgroup col:nth-child(2) {
+        width: 50%; /* 제목 칼럼 넓게 */
+      }
+      th,
+      td {
+        border: 1px solid #ccc;
+        padding: 10px;
+        text-align: center;
+        word-wrap: break-word; /* 길면 줄바꿈 */
+      }
+      th {
+        background-color: #f2f2f2;
+      }
+      .board-title {
+        text-align: center;
+        margin-top: 40px;
+      }
+      .board-title h1 {
+        margin-bottom: 20px;
+      }
+      .logo {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        font-weight: bold;
+        font-size: 24px;
+        text-decoration: none;
+        color: #333;
+      }
+      .new-post-btn {
+        width: 80%;
+        margin: 20px auto;
+        text-align: right;
+      }
+    </style>
+  </head>
+  <body>
+    <a href="guitar.html" class="logo">WebGuitar</a>
+    <div class="board-title">
+      <h1>자유게시판</h1>
+    </div>
+
+    <div class="new-post-btn">
+      <a href="newPost.html"><button>글쓰기</button></a>
+    </div>
+
+    <table>
+      <colgroup>
+        <col style="width: 50px" />
+        <col />
+        <col style="width: 100px" />
+        <col style="width: 150px" />
+        <col style="width: 50px" />
+      </colgroup>
+      <thead>
+        <tr>
+          <th>No</th>
+          <th>제목</th>
+          <th>글쓴이</th>
+          <th>작성시간</th>
+          <th>좋아요</th>
+        </tr>
+      </thead>
+      <tbody id="board-list"></tbody>
+    </table>
+
+    <script src="js/board.js"></script>
+  </body>
+</html>

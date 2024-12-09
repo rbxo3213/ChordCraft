@@ -2,7 +2,6 @@
 const Music = require("../models/Music");
 const User = require("../models/User");
 
-// 음악 업로드
 exports.uploadMusic = async (req, res) => {
   try {
     const { title } = req.body;
@@ -10,7 +9,6 @@ exports.uploadMusic = async (req, res) => {
     const fileUrl = `/uploads/${req.file.filename}`;
     const newMusic = await Music.create({ title, fileUrl, uploadedBy: userId });
 
-    // 사용자 모델에 업로드한 음악 추가
     await User.findByIdAndUpdate(userId, { $push: { uploads: newMusic._id } });
 
     res.status(201).json({ message: "음악 업로드 성공", music: newMusic });
@@ -19,7 +17,6 @@ exports.uploadMusic = async (req, res) => {
   }
 };
 
-// 사용자별 업로드한 음악 조회
 exports.getUserMusic = async (req, res) => {
   try {
     const userId = req.userId;

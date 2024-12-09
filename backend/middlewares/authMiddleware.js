@@ -7,7 +7,6 @@ module.exports = (req, res, next) => {
 
   if (!token) return res.status(401).json({ message: "토큰 없음" });
 
-  // 'Bearer ' 문자열 제거
   if (token.startsWith("Bearer ")) {
     token = token.slice(7, token.length);
   }

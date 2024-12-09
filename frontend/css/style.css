@@ -1,5 +1,3 @@
-/* frontend/css/style.css */
-
 body {
   font-family: Arial, sans-serif;
   margin: 20px;
@@ -7,6 +5,16 @@ body {
 
 h1,
 h2 {
+  color: #333;
+}
+
+.logo {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  font-weight: bold;
+  font-size: 24px;
+  text-decoration: none;
   color: #333;
 }
 
@@ -90,19 +98,6 @@ h2 {
   top: 170px;
 }
 
-.string::after {
-  content: "";
-  position: absolute;
-  right: 0;
-  width: 0;
-  height: 0;
-  border-top: 5px solid transparent;
-  border-bottom: 5px solid transparent;
-  border-left: 10px solid #666;
-  transform: translateY(-50%);
-  top: 50%;
-}
-
 .string.active {
   animation: vibrate 0.5s ease-out;
 }
@@ -123,4 +118,45 @@ h2 {
   100% {
     transform: translateY(0);
   }
+}
+
+#sheet-music {
+  width: 600px;
+  display: block;
+  margin: 0 auto 20px auto;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+#sheet-upload-form {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+#instruments {
+  text-align: center;
+  margin-top: 20px;
+}
+
+.profile-info {
+  margin-bottom: 20px;
+}
+
+.board-post {
+  border: 1px solid #ccc;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.board-post-author {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.board-post-author img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin-right: 10px;
 }
