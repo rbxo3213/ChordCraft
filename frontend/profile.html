@@ -1,3 +1,4 @@
+<!-- frontend/profile.html -->
 <!DOCTYPE html>
 <html lang="ko">
   <head>
@@ -24,10 +25,9 @@
     </style>
   </head>
   <body>
-    <a href="guitar.html" class="logo">WebGuitar</a>
+    <a href="guitar.html" class="logo">ChordCraft</a>
     <h1>프로필 페이지</h1>
     <div class="profile-info">
-      <!-- 기본 프로필 이미지 경로를 절대경로로 지정 -->
       <img
         id="profile-picture"
         src="/assets/images/profiles/default-profile.png"
@@ -36,14 +36,14 @@
         height="100"
       />
       <p>닉네임: <span id="nickname-display"></span></p>
-      <a href="board.html">내 게시판</a>
+      <!-- "내 게시판" 링크를 myPosts.html로 변경 -->
+      <a href="myPosts.html">내 게시판</a>
     </div>
     <button id="change-profile-pic">프로필 사진 변경</button>
 
     <div class="profile-image-modal" id="profile-image-modal">
       <h4>프로필 이미지 선택</h4>
       <div id="profile-image-list">
-        <!-- 절대 경로로 지정, data-img도 절대 경로 -->
         <img
           src="/assets/images/profiles/img1.png"
           data-img="/assets/images/profiles/img1.png"

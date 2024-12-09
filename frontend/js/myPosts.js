@@ -1,12 +1,18 @@
-// frontend/js/board.js
 const SERVER_URL = "http://localhost:5000";
 const token = localStorage.getItem("token");
 
-async function loadPosts() {
-  const response = await fetch(`${SERVER_URL}/api/posts`);
+if (!token) {
+  alert("로그인이 필요합니다.");
+  window.location.href = "index.html";
+}
+
+async function loadMyPosts() {
+  const response = await fetch(`${SERVER_URL}/api/posts/mine`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   const data = await response.json();
-  const boardList = document.getElementById("board-list");
-  boardList.innerHTML = "";
+  const myBoardList = document.getElementById("my-board-list");
+  myBoardList.innerHTML = "";
 
   data.posts.forEach((post, index) => {
     const tr = document.createElement("tr");
@@ -31,15 +37,14 @@ async function loadPosts() {
     createdAtTd.textContent = date.toLocaleString();
     tr.appendChild(createdAtTd);
 
-    // 좋아요 수 반영
     const likesTd = document.createElement("td");
     likesTd.textContent = post.likeCount || 0;
     tr.appendChild(likesTd);
 
-    boardList.appendChild(tr);
+    myBoardList.appendChild(tr);
   });
 }
 
 window.onload = () => {
-  loadPosts();
+  loadMyPosts();
 };

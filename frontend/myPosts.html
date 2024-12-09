@@ -2,7 +2,7 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <title>게시판</title>
+    <title>내 게시판</title>
     <link rel="stylesheet" href="css/style.css" />
     <style>
       table {
@@ -12,14 +12,14 @@
         table-layout: fixed;
       }
       colgroup col:nth-child(2) {
-        width: 50%; /* 제목 칼럼 넓게 */
+        width: 50%;
       }
       th,
       td {
         border: 1px solid #ccc;
         padding: 10px;
         text-align: center;
-        word-wrap: break-word; /* 길면 줄바꿈 */
+        word-wrap: break-word;
       }
       th {
         background-color: #f2f2f2;
@@ -50,7 +50,7 @@
   <body>
     <a href="guitar.html" class="logo">ChordCraft</a>
     <div class="board-title">
-      <h1>게시판</h1>
+      <h1>내가 쓴 글</h1>
     </div>
 
     <div class="new-post-btn">
@@ -74,9 +74,9 @@
           <th>좋아요</th>
         </tr>
       </thead>
-      <tbody id="board-list"></tbody>
+      <tbody id="my-board-list"></tbody>
     </table>
 
-    <script src="js/board.js"></script>
+    <script src="js/myPosts.js"></script>
   </body>
 </html>

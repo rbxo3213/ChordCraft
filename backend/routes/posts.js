@@ -8,7 +8,6 @@ const path = require("path");
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    // uploads 폴더 존재하는지 확인 후 없으면 만들어주세요.
     cb(null, path.join(__dirname, "../uploads/"));
   },
   filename: (req, file, cb) => {
@@ -21,6 +20,8 @@ router
   .route("/")
   .get(postController.getPosts)
   .post(authMiddleware, upload.single("music"), postController.createPost);
+
+router.get("/mine", authMiddleware, postController.getMyPosts); // 추가된 라우트
 
 router
   .route("/:id")

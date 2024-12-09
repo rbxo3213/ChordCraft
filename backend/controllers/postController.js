@@ -25,10 +25,38 @@ exports.createPost = async (req, res) => {
 
 exports.getPosts = async (req, res) => {
   try {
+    // 모든 게시글 조회 + likeCount 필드 추가
     const posts = await Post.find({})
       .populate("author", "nickname profilePicture")
       .sort({ createdAt: -1 });
-    res.status(200).json({ posts });
+
+    const postsWithLikeCount = posts.map((post) => {
+      const postObj = post.toObject();
+      postObj.likeCount = post.likes.length;
+      return postObj;
+    });
+
+    res.status(200).json({ posts: postsWithLikeCount });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "서버 오류" });
+  }
+};
+
+exports.getMyPosts = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const posts = await Post.find({ author: userId })
+      .populate("author", "nickname profilePicture")
+      .sort({ createdAt: -1 });
+
+    const postsWithLikeCount = posts.map((post) => {
+      const postObj = post.toObject();
+      postObj.likeCount = post.likes.length;
+      return postObj;
+    });
+
+    res.status(200).json({ posts: postsWithLikeCount });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "서버 오류" });
@@ -44,7 +72,7 @@ exports.getPostById = async (req, res) => {
     if (!post) return res.status(404).json({ message: "게시글 없음" });
 
     const postObj = post.toObject();
-    postObj.likeCount = post.likes.length; // likeCount는 likes 배열 길이로 계산
+    postObj.likeCount = post.likes.length; // likeCount 추가
 
     res.status(200).json({ post: postObj });
   } catch (err) {
@@ -54,6 +82,7 @@ exports.getPostById = async (req, res) => {
 };
 
 exports.updatePost = async (req, res) => {
+  // 내용 동일
   try {
     const { id } = req.params;
     const { title, content } = req.body;
@@ -76,6 +105,7 @@ exports.updatePost = async (req, res) => {
 };
 
 exports.deletePost = async (req, res) => {
+  // 내용 동일
   try {
     const { id } = req.params;
     const post = await Post.findById(id);
@@ -84,7 +114,7 @@ exports.deletePost = async (req, res) => {
       return res.status(403).json({ message: "삭제 권한 없음" });
     }
 
-    await Post.findByIdAndDelete(id); // post.remove() 대신 findByIdAndDelete 사용
+    await Post.findByIdAndDelete(id);
     res.status(200).json({ message: "게시글 삭제 성공" });
   } catch (err) {
     console.error(err);
@@ -93,6 +123,7 @@ exports.deletePost = async (req, res) => {
 };
 
 exports.addComment = async (req, res) => {
+  // 내용 동일
   try {
     const { id } = req.params;
     const { content } = req.body;
@@ -110,6 +141,7 @@ exports.addComment = async (req, res) => {
 };
 
 exports.updateComment = async (req, res) => {
+  // 내용 동일
   try {
     const { id, commentId } = req.params;
     const { content } = req.body;
@@ -132,6 +164,7 @@ exports.updateComment = async (req, res) => {
 };
 
 exports.deleteComment = async (req, res) => {
+  // 내용 동일
   try {
     const { id, commentId } = req.params;
     const post = await Post.findById(id);
@@ -154,6 +187,7 @@ exports.deleteComment = async (req, res) => {
 };
 
 exports.toggleLike = async (req, res) => {
+  // 내용 동일
   try {
     const { id } = req.params;
     const post = await Post.findById(id);
