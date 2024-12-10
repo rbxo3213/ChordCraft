@@ -9,7 +9,13 @@ if (!token) {
   window.location.href = "index.html";
 }
 
-// 로고 클릭 시 메인페이지(guitar.html)로
+// 로그아웃 버튼 기능 추가
+document.getElementById("logout-button").addEventListener("click", () => {
+  localStorage.removeItem("token");
+  localStorage.removeItem("userId");
+  window.location.href = "index.html";
+});
+
 document.querySelector(".logo").addEventListener("click", () => {
   window.location.href = "guitar.html";
 });
@@ -46,7 +52,6 @@ function saveSettings() {
   localStorage.setItem("stringKeys", stringKeys.join(","));
 }
 
-// 키보드 설정 저장
 document
   .getElementById("keyboard-settings-form")
   .addEventListener("submit", (e) => {
@@ -58,18 +63,16 @@ document
     alert("키보드 설정이 저장되었습니다.");
   });
 
-// 코드/현 상태
 let currentChord = null;
 let currentChordType = null;
 let isRecording = false;
 let mediaRecorder;
 let recordedChunks = [];
-let audioContext = null; // AudioContext를 아직 생성하지 않음
-let dest = null; // 녹음용 MediaStreamDestination
+let audioContext = null;
+let dest = null;
 
 const activeStrings = new Set();
 
-// 사용자 인터랙션 시 AudioContext 생성 및 resume
 document.addEventListener(
   "click",
   async () => {
@@ -78,7 +81,6 @@ document.addEventListener(
     }
     if (audioContext.state === "suspended") {
       await audioContext.resume();
-      console.log("AudioContext resumed after user interaction.");
     }
   },
   { once: true }
@@ -88,37 +90,30 @@ document.addEventListener("keydown", (e) => {
   const upperKey = e.key.toUpperCase();
   const lowerKey = e.key.toLowerCase();
 
-  // 코드 키 처리: 바로 currentChord에 반영
   if (codeKeys.includes(upperKey)) {
     currentChord = upperKey;
     updateChord();
   }
 
-  // 코드 모드 키 처리: 바로 currentChordType에 반영
   if (chordTypeKeys.includes(lowerKey)) {
     currentChordType = lowerKey;
     updateChord();
   }
 
-  // 현 연주 키 처리
   if (stringKeys.includes(lowerKey)) {
     activeStrings.add(lowerKey);
-    console.log(`KeyDown: ${lowerKey} (stringKeys)`);
     playString(lowerKey);
   }
 });
 
 document.addEventListener("keyup", (e) => {
   const lowerKey = e.key.toLowerCase();
-
-  // 현 키는 뗄 때 제거
   if (stringKeys.includes(lowerKey)) {
     activeStrings.delete(lowerKey);
   }
 });
 
 function updateChord() {
-  console.log("updateChord:", { currentChord, currentChordType });
   displayCurrentChord();
 }
 
@@ -128,7 +123,6 @@ function displayCurrentChord() {
     let chordTypeName = getChordTypeName(currentChordType);
     displayElement.textContent = `선택된 코드: ${currentChord}${chordTypeName}`;
   } else if (currentChord && !currentChordType) {
-    // 코드만 있고 코드 타입이 없을 수도 있으므로 처리
     displayElement.textContent = `선택된 코드: ${currentChord}`;
   } else {
     displayElement.textContent = "선택된 코드: 없음";
@@ -148,51 +142,28 @@ function getChordTypeName(chordTypeKey) {
 }
 
 function playString(key) {
-  if (!audioContext || audioContext.state !== "running") {
-    console.log("AudioContext not running, cannot play");
-    return;
-  }
+  if (!audioContext || audioContext.state !== "running") return;
 
   const index = stringKeys.indexOf(key);
-  if (index === -1) {
-    console.log(`Invalid key: ${key}, no stringNumber found in stringKeys`);
-    return;
-  }
+  if (index === -1) return;
 
-  // stringKeys[0] -> 6번 현, stringKeys[1] -> 5번 현 ... stringKeys[5] -> 1번 현
   const stringNumber = (6 - index).toString();
 
   let fretNumber = 0;
   if (currentChord && currentChordType) {
     const chord = chordData[currentChord][currentChordType];
-    if (chord) {
-      fretNumber = chord[6 - parseInt(stringNumber)];
-    } else {
-      fretNumber = 0;
-    }
-  } else {
-    fretNumber = 0;
+    fretNumber = chord ? chord[6 - parseInt(stringNumber)] : 0;
   }
 
-  // fretNumber 범위 확인 (0~5 범위 내로)
   if (fretNumber < 0 || fretNumber > 5) {
     fretNumber = 0;
   }
 
   const baseFrequency = stringFrequencies[parseInt(stringNumber)];
-  if (!baseFrequency) {
-    console.log(`No baseFrequency for string ${stringNumber}`);
-    return;
-  }
+  if (!baseFrequency) return;
 
   const frequency = baseFrequency[fretNumber];
-
-  console.log(
-    `playString: chord=${currentChord}, type=${currentChordType}, string=${stringNumber}, fret=${fretNumber}, frequency=${frequency}`
-  );
-
   if (!frequency) {
-    console.log("No frequency found for this fret, just animating string");
     animateString(stringNumber);
     return;
   }
@@ -202,12 +173,7 @@ function playString(key) {
 }
 
 function playGuitarSound(frequency) {
-  if (!audioContext || audioContext.state !== "running") {
-    console.log("AudioContext not running in playGuitarSound");
-    return;
-  }
-
-  console.log(`playGuitarSound: frequency=${frequency}Hz`);
+  if (!audioContext || audioContext.state !== "running") return;
 
   const now = audioContext.currentTime;
   const oscillator = audioContext.createOscillator();
@@ -221,11 +187,8 @@ function playGuitarSound(frequency) {
   oscillator.frequency.setValueAtTime(frequency, now);
   oscillator.connect(filter);
   filter.connect(gainNode);
-
-  // 기존 destination 출력
   gainNode.connect(audioContext.destination);
 
-  // dest가 존재하면 녹음용 dest에도 연결
   if (dest) {
     gainNode.connect(dest);
   }
@@ -259,10 +222,7 @@ document.getElementById("record-button").addEventListener("click", () => {
 });
 
 async function startRecording() {
-  if (!audioContext || audioContext.state !== "running") {
-    console.log("AudioContext not running, cannot start recording");
-    return;
-  }
+  if (!audioContext || audioContext.state !== "running") return;
 
   recordedChunks = [];
   dest = audioContext.createMediaStreamDestination();
@@ -279,8 +239,14 @@ function stopRecording() {
   if (!mediaRecorder) return;
   mediaRecorder.stop();
   mediaRecorder.onstop = () => {
-    // webm 형식으로 Blob 생성
     const blob = new Blob(recordedChunks, { type: "audio/webm" });
+
+    const recordingName = prompt(
+      "녹음한 파일의 이름을 입력하세요(확장자 제외)",
+      "myRecording"
+    );
+    const filename = recordingName ? recordingName + ".webm" : "recorded.webm";
+
     const url = URL.createObjectURL(blob);
 
     const playbackButton = document.createElement("button");
@@ -292,7 +258,7 @@ function stopRecording() {
 
     const downloadButton = document.createElement("a");
     downloadButton.href = url;
-    downloadButton.download = "recorded.webm";
+    downloadButton.download = filename;
     downloadButton.textContent = "다운로드";
 
     const recordingStatus = document.getElementById("recording-status");
@@ -317,7 +283,7 @@ document.getElementById("sheet-upload-form").addEventListener("submit", (e) => {
   reader.readAsDataURL(file);
 });
 
-// 악기 선택(추가 예정)
+// 악기 선택 알림
 document.getElementById("instrument-select").addEventListener("change", (e) => {
   alert(e.target.value + "는 아직 구현되지 않았습니다.");
 });

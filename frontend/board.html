@@ -12,21 +12,19 @@
         table-layout: fixed;
       }
       colgroup col:nth-child(2) {
-        width: 50%; /* 제목 칼럼 넓게 */
+        width: 50%;
       }
       th,
       td {
         border: 1px solid #ccc;
         padding: 10px;
         text-align: center;
-        word-wrap: break-word; /* 길면 줄바꿈 */
+        word-wrap: break-word;
       }
-      th {
-        background-color: #f2f2f2;
-      }
+      /* th는 style.css에서 베이지톤으로 지정됨 */
       .board-title {
         text-align: center;
-        margin-top: 40px;
+        margin-top: 100px;
       }
       .board-title h1 {
         margin-bottom: 20px;
@@ -44,6 +42,14 @@
         width: 80%;
         margin: 20px auto;
         text-align: right;
+      }
+      .pagination {
+        display: flex;
+        justify-content: center;
+        margin-top: 20px;
+      }
+      .pagination button {
+        margin: 0 10px;
       }
     </style>
   </head>
@@ -76,6 +82,11 @@
       </thead>
       <tbody id="board-list"></tbody>
     </table>
+
+    <div class="pagination">
+      <button id="prev-page">이전</button>
+      <button id="next-page">다음</button>
+    </div>
 
     <script src="js/board.js"></script>
   </body>

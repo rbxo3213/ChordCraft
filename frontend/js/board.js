@@ -2,17 +2,29 @@
 const SERVER_URL = "http://localhost:5000";
 const token = localStorage.getItem("token");
 
+let currentPage = 1;
+const postsPerPage = 10;
+let allPosts = [];
+
 async function loadPosts() {
   const response = await fetch(`${SERVER_URL}/api/posts`);
   const data = await response.json();
+  allPosts = data.posts || [];
+  renderPosts();
+}
+
+function renderPosts() {
   const boardList = document.getElementById("board-list");
   boardList.innerHTML = "";
+  const start = (currentPage - 1) * postsPerPage;
+  const end = start + postsPerPage;
+  const pagePosts = allPosts.slice(start, end);
 
-  data.posts.forEach((post, index) => {
+  pagePosts.forEach((post, index) => {
     const tr = document.createElement("tr");
 
     const noTd = document.createElement("td");
-    noTd.textContent = data.posts.length - index;
+    noTd.textContent = allPosts.length - (start + index);
     tr.appendChild(noTd);
 
     const titleTd = document.createElement("td");
@@ -31,7 +43,6 @@ async function loadPosts() {
     createdAtTd.textContent = date.toLocaleString();
     tr.appendChild(createdAtTd);
 
-    // 좋아요 수 반영
     const likesTd = document.createElement("td");
     likesTd.textContent = post.likeCount || 0;
     tr.appendChild(likesTd);
@@ -39,6 +50,19 @@ async function loadPosts() {
     boardList.appendChild(tr);
   });
 }
+
+document.getElementById("prev-page").addEventListener("click", () => {
+  if (currentPage > 1) {
+    currentPage--;
+    renderPosts();
+  }
+});
+document.getElementById("next-page").addEventListener("click", () => {
+  if (currentPage * postsPerPage < allPosts.length) {
+    currentPage++;
+    renderPosts();
+  }
+});
 
 window.onload = () => {
   loadPosts();

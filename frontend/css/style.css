@@ -3,6 +3,7 @@ body {
   margin: 20px;
   line-height: 1.6;
   color: #333;
+  background-color: #f5f5dc; /* 베이지톤 배경 */
 }
 
 h1,
@@ -26,12 +27,13 @@ a:hover {
   color: #555;
 }
 
+/* 베이지톤 버튼 */
 button,
 input[type="submit"],
 input[type="button"] {
-  background-color: #3498db;
-  color: #fff;
-  border: none;
+  background-color: #f3e5ab; /* 베이지톤 */
+  color: #333;
+  border: 1px solid #ccc;
   padding: 8px 14px;
   border-radius: 4px;
   cursor: pointer;
@@ -43,41 +45,41 @@ input[type="button"] {
 button:hover,
 input[type="submit"]:hover,
 input[type="button"]:hover {
-  background-color: #2980b9;
+  background-color: #ecd898; /* 좀 더 진한 베이지 */
 }
 
 button:active,
 input[type="submit"]:active,
 input[type="button"]:active {
-  background-color: #1f6390;
+  background-color: #e3cf8f;
 }
 
 table {
   font-size: 14px;
 }
 
-#record-button {
-  display: block;
-  margin: 10px auto;
-  background-color: #e74c3c;
+/* 테이블 헤더 베이지톤 */
+th {
+  background-color: #f3e5ab;
+  color: #333;
+}
+
+/* 로고와 컨텐츠 사이 여백 증가를 위해 board-title에 margin-top 증가 */
+.board-title {
+  text-align: center;
+  margin-top: 100px; /* 여백 크게 */
 }
 
 #record-button.recording {
-  background-color: #2ecc71;
-}
-
-#recording-status {
-  text-align: center;
-  font-size: 18px;
-  color: #e74c3c;
+  background-color: #e3cf8f;
 }
 
 #guitar {
   position: relative;
   width: 800px;
   height: 200px;
-  margin: 20px auto;
-  background-color: #ecf0f1;
+  margin: 60px auto; /* 여백 추가 */
+  background-color: #d2b48c; /* 브라운 톤(타노색) */
   border: 2px solid #ccc;
   border-radius: 10px;
 }
@@ -181,4 +183,59 @@ table {
   height: 40px;
   border-radius: 50%;
   margin-right: 10px;
+}
+
+/* postDetail layout */
+.post-detail-container {
+  border: 2px solid #ccc;
+  padding: 20px;
+  background-color: #faf8ef; /* 약간 더 밝은 베이지 배경 */
+  border-radius: 8px;
+}
+.post-info,
+.post-content-section,
+.comment-section {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 15px;
+  margin-bottom: 20px;
+}
+
+.post-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.comment {
+  border-bottom: 1px solid #ccc;
+  padding: 5px 0;
+}
+
+.comment-form textarea {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+/* 우측 상단 로그아웃 버튼 */
+.logout-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+/* editPost 페이지에서 파일 input 스타일 */
+input[type="file"] {
+  margin-bottom: 10px;
+}
+
+/* 페이지네이션 버튼 */
+.pagination {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+.pagination button {
+  margin: 0 10px;
 }

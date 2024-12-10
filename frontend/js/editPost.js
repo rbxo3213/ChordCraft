@@ -38,14 +38,23 @@ document
     e.preventDefault();
     const title = document.getElementById("edit-post-title").value;
     const content = document.getElementById("edit-post-content").value;
+    const file = document.getElementById("edit-post-music-file").files[0];
+
+    const reqBody = { title, content };
+
+    const formData = new FormData();
+    formData.append("title", title);
+    formData.append("content", content);
+    if (file) {
+      formData.append("music", file);
+    }
 
     const response = await fetch(`${SERVER_URL}/api/posts/${currentPostId}`, {
       method: "PUT",
       headers: {
-        "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ title, content }),
+      body: formData,
     });
 
     const resData = await response.json();

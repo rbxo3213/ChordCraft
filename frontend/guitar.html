@@ -4,23 +4,34 @@
     <meta charset="UTF-8" />
     <title>Chord Craft 메인페이지</title>
     <link rel="stylesheet" href="css/style.css" />
+    <style>
+      /* 로고와 타이틀 사이 여백 증가 */
+      h1 {
+        margin-top: 100px;
+        text-align: center;
+      }
+    </style>
   </head>
   <body>
     <a href="guitar.html" class="logo">ChordCraft</a>
+    <!-- 로그아웃 버튼 추가 -->
+    <button class="logout-button" id="logout-button">로그아웃</button>
+
     <h1>Virtual Guitar 연주</h1>
 
-    <!-- 프로필, 게시판 이동 버튼 추가 -->
-    <div id="nav-buttons" style="margin-bottom: 20px">
+    <div id="nav-buttons" style="margin-bottom: 20px; text-align: center">
       <a href="profile.html"><button>프로필 페이지</button></a>
       <a href="board.html"><button>게시판 페이지</button></a>
+      <a href="library.html"><button>내 라이브러리</button></a>
     </div>
 
-    <div id="current-chord-display">선택된 코드: 없음</div>
+    <div id="current-chord-display" style="text-align: center">
+      선택된 코드: 없음
+    </div>
 
     <div id="recording-status"></div>
     <button id="record-button">녹음 시작</button>
 
-    <!-- 악보 업로드 -->
     <form id="sheet-upload-form">
       <input type="file" id="sheet-file" accept="image/*" />
       <button type="submit">악보 업로드</button>

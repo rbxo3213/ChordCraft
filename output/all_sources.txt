@@ -661,21 +661,19 @@ module.exports = router;
         table-layout: fixed;
       }
       colgroup col:nth-child(2) {
-        width: 50%; /* 제목 칼럼 넓게 */
+        width: 50%;
       }
       th,
       td {
         border: 1px solid #ccc;
         padding: 10px;
         text-align: center;
-        word-wrap: break-word; /* 길면 줄바꿈 */
+        word-wrap: break-word;
       }
-      th {
-        background-color: #f2f2f2;
-      }
+      /* th는 style.css에서 베이지톤으로 지정됨 */
       .board-title {
         text-align: center;
-        margin-top: 40px;
+        margin-top: 100px;
       }
       .board-title h1 {
         margin-bottom: 20px;
@@ -693,6 +691,14 @@ module.exports = router;
         width: 80%;
         margin: 20px auto;
         text-align: right;
+      }
+      .pagination {
+        display: flex;
+        justify-content: center;
+        margin-top: 20px;
+      }
+      .pagination button {
+        margin: 0 10px;
       }
     </style>
   </head>
@@ -726,13 +732,17 @@ module.exports = router;
       <tbody id="board-list"></tbody>
     </table>
 
+    <div class="pagination">
+      <button id="prev-page">이전</button>
+      <button id="next-page">다음</button>
+    </div>
+
     <script src="js/board.js"></script>
   </body>
 </html>
 
 
 파일경로: frontend\editPost.html
-<!-- frontend/editPost.html -->
 <!DOCTYPE html>
 <html lang="ko">
   <head>
@@ -752,6 +762,11 @@ module.exports = router;
       .form-container button {
         float: right;
       }
+
+      /* 음악 파일 수정 추가 */
+      #edit-post-music-file {
+        margin-bottom: 10px;
+      }
     </style>
   </head>
   <body>
@@ -767,9 +782,7 @@ module.exports = router;
         /><br />
         <textarea id="edit-post-content" placeholder="내용" required></textarea
         ><br />
-        <!-- 음악 파일 수정은 선택사항. 필요하다면 주석 해제
         <input type="file" id="edit-post-music-file" accept="audio/*" /><br />
-        -->
         <button type="submit">수정</button>
       </form>
     </div>
@@ -785,23 +798,34 @@ module.exports = router;
     <meta charset="UTF-8" />
     <title>Chord Craft 메인페이지</title>
     <link rel="stylesheet" href="css/style.css" />
+    <style>
+      /* 로고와 타이틀 사이 여백 증가 */
+      h1 {
+        margin-top: 100px;
+        text-align: center;
+      }
+    </style>
   </head>
   <body>
     <a href="guitar.html" class="logo">ChordCraft</a>
+    <!-- 로그아웃 버튼 추가 -->
+    <button class="logout-button" id="logout-button">로그아웃</button>
+
     <h1>Virtual Guitar 연주</h1>
 
-    <!-- 프로필, 게시판 이동 버튼 추가 -->
-    <div id="nav-buttons" style="margin-bottom: 20px">
+    <div id="nav-buttons" style="margin-bottom: 20px; text-align: center">
       <a href="profile.html"><button>프로필 페이지</button></a>
       <a href="board.html"><button>게시판 페이지</button></a>
+      <a href="library.html"><button>내 라이브러리</button></a>
     </div>
 
-    <div id="current-chord-display">선택된 코드: 없음</div>
+    <div id="current-chord-display" style="text-align: center">
+      선택된 코드: 없음
+    </div>
 
     <div id="recording-status"></div>
     <button id="record-button">녹음 시작</button>
 
-    <!-- 악보 업로드 -->
     <form id="sheet-upload-form">
       <input type="file" id="sheet-file" accept="image/*" />
       <button type="submit">악보 업로드</button>
@@ -872,16 +896,39 @@ module.exports = router;
         justify-content: center;
         height: 100vh;
       }
+      .logo-area {
+        text-align: center;
+        margin-bottom: 50px; /* 여백 추가 */
+      }
       .logo-area img {
-        width: 600px;
+        width: 300px; /* 로고 크기 조정 */
         display: block;
         margin: 0 auto;
       }
+      .logo-area h1 {
+        margin-top: 20px;
+        font-size: 32px;
+        font-weight: bold;
+        color: #333;
+      }
       .form-area {
         text-align: center;
+        margin-top: 20px;
       }
       #register-form {
         display: none;
+        margin-top: 20px;
+      }
+      input[type="text"],
+      input[type="password"] {
+        margin: 10px 0;
+        padding: 8px;
+        width: 200px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+      button {
+        margin-top: 10px;
       }
     </style>
   </head>
@@ -1097,70 +1144,23 @@ module.exports = router;
     <title>게시글 상세보기</title>
     <link rel="stylesheet" href="css/style.css" />
     <style>
-      .post-detail-container {
-        width: 80%;
-        margin: 20px auto;
-      }
-      .post-info {
-        border-bottom: 1px solid #ccc;
-        padding-bottom: 10px;
-        margin-bottom: 20px;
-      }
-      .post-info h1 {
-        margin-bottom: 10px;
-      }
-      .post-meta {
-        color: #666;
-        font-size: 14px;
-        margin-bottom: 10px;
-      }
-      .post-content-section {
-        margin-bottom: 20px;
-      }
-      .post-buttons {
-        margin-bottom: 20px;
-      }
-      .comment-section {
-        margin-top: 40px;
-      }
-      .comment-section h3 {
-        margin-bottom: 10px;
-      }
-      .comment {
-        border-bottom: 1px solid #ccc;
-        padding: 5px 0;
-      }
-      .comment-author {
-        font-weight: bold;
-      }
-      .comment-form textarea {
-        width: 100%;
-        margin-bottom: 10px;
-      }
+      /* 레이아웃 추가: post-detail-container, post-info, post-content-section, comment-section은 style.css에 추가됨 */
     </style>
   </head>
   <body>
     <a href="guitar.html" class="logo">ChordCraft</a>
     <div class="post-detail-container">
-      <!-- 제목 -->
-      <h1 id="post-title"></h1>
-
-      <!-- 작성자/작성시간/수정/삭제를 한 줄로 정렬 -->
-      <div
-        class="post-header"
-        style="
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        "
-      >
-        <div class="post-meta">
-          작성자: <span id="post-author"></span> | 작성시간:
-          <span id="post-date"></span>
-        </div>
-        <div class="post-actions">
-          <button id="edit-button" style="display: none">수정</button>
-          <button id="delete-button" style="display: none">삭제</button>
+      <div class="post-info">
+        <h1 id="post-title"></h1>
+        <div class="post-header">
+          <div class="post-meta">
+            작성자: <span id="post-author"></span> | 작성시간:
+            <span id="post-date"></span>
+          </div>
+          <div class="post-actions">
+            <button id="edit-button" style="display: none">수정</button>
+            <button id="delete-button" style="display: none">삭제</button>
+          </div>
         </div>
       </div>
 
@@ -1168,12 +1168,11 @@ module.exports = router;
         <p id="post-content"></p>
       </div>
 
-      <div id="post-music"></div>
+      <div class="post-content-section" id="post-music"></div>
 
-      <div class="post-buttons">
+      <div class="post-content-section post-buttons">
         <span>좋아요: <span id="like-count"></span></span>
         <button id="like-button">좋아요</button>
-        <!-- 수정/삭제 버튼은 위로 옮겨서 post-actions에 넣었으므로 여기서는 제거 -->
       </div>
 
       <div class="comment-section">
@@ -1193,7 +1192,6 @@ module.exports = router;
 
 
 파일경로: frontend\profile.html
-<!-- frontend/profile.html -->
 <!DOCTYPE html>
 <html lang="ko">
   <head>
@@ -1217,6 +1215,11 @@ module.exports = router;
         margin: 5px;
         cursor: pointer;
       }
+
+      /* 새로운 프로필 이미지 첨부용 */
+      #upload-profile-pic-form {
+        margin-top: 20px;
+      }
     </style>
   </head>
   <body>
@@ -1231,13 +1234,12 @@ module.exports = router;
         height="100"
       />
       <p>닉네임: <span id="nickname-display"></span></p>
-      <!-- "내 게시판" 링크를 myPosts.html로 변경 -->
       <a href="myPosts.html">내 게시판</a>
     </div>
     <button id="change-profile-pic">프로필 사진 변경</button>
 
     <div class="profile-image-modal" id="profile-image-modal">
-      <h4>프로필 이미지 선택</h4>
+      <h4>프로필 이미지 선택 (기존 이미지)</h4>
       <div id="profile-image-list">
         <img
           src="/assets/images/profiles/img1.png"
@@ -1252,10 +1254,20 @@ module.exports = router;
           data-img="/assets/images/profiles/img3.png"
         />
       </div>
+      <h4>새 이미지 업로드</h4>
+      <form id="upload-profile-pic-form">
+        <input
+          type="file"
+          id="new-profile-pic-file"
+          accept="image/*"
+          required
+        /><br />
+        <button type="submit">업로드</button>
+      </form>
       <button id="close-modal">닫기</button>
     </div>
 
-    <h2>내 음악 목록</h2>
+    <h2>내 음악 목록 (업로드 + 녹음한 음악)</h2>
     <ul id="music-list"></ul>
 
     <h2>비밀번호 변경</h2>
@@ -1355,17 +1367,29 @@ document
 const SERVER_URL = "http://localhost:5000";
 const token = localStorage.getItem("token");
 
+let currentPage = 1;
+const postsPerPage = 10;
+let allPosts = [];
+
 async function loadPosts() {
   const response = await fetch(`${SERVER_URL}/api/posts`);
   const data = await response.json();
+  allPosts = data.posts || [];
+  renderPosts();
+}
+
+function renderPosts() {
   const boardList = document.getElementById("board-list");
   boardList.innerHTML = "";
+  const start = (currentPage - 1) * postsPerPage;
+  const end = start + postsPerPage;
+  const pagePosts = allPosts.slice(start, end);
 
-  data.posts.forEach((post, index) => {
+  pagePosts.forEach((post, index) => {
     const tr = document.createElement("tr");
 
     const noTd = document.createElement("td");
-    noTd.textContent = data.posts.length - index;
+    noTd.textContent = allPosts.length - (start + index);
     tr.appendChild(noTd);
 
     const titleTd = document.createElement("td");
@@ -1384,7 +1408,6 @@ async function loadPosts() {
     createdAtTd.textContent = date.toLocaleString();
     tr.appendChild(createdAtTd);
 
-    // 좋아요 수 반영
     const likesTd = document.createElement("td");
     likesTd.textContent = post.likeCount || 0;
     tr.appendChild(likesTd);
@@ -1392,6 +1415,19 @@ async function loadPosts() {
     boardList.appendChild(tr);
   });
 }
+
+document.getElementById("prev-page").addEventListener("click", () => {
+  if (currentPage > 1) {
+    currentPage--;
+    renderPosts();
+  }
+});
+document.getElementById("next-page").addEventListener("click", () => {
+  if (currentPage * postsPerPage < allPosts.length) {
+    currentPage++;
+    renderPosts();
+  }
+});
 
 window.onload = () => {
   loadPosts();
@@ -1506,14 +1542,23 @@ document
     e.preventDefault();
     const title = document.getElementById("edit-post-title").value;
     const content = document.getElementById("edit-post-content").value;
+    const file = document.getElementById("edit-post-music-file").files[0];
+
+    const reqBody = { title, content };
+
+    const formData = new FormData();
+    formData.append("title", title);
+    formData.append("content", content);
+    if (file) {
+      formData.append("music", file);
+    }
 
     const response = await fetch(`${SERVER_URL}/api/posts/${currentPostId}`, {
       method: "PUT",
       headers: {
-        "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ title, content }),
+      body: formData,
     });
 
     const resData = await response.json();
@@ -1598,7 +1643,13 @@ if (!token) {
   window.location.href = "index.html";
 }
 
-// 로고 클릭 시 메인페이지(guitar.html)로
+// 로그아웃 버튼 기능 추가
+document.getElementById("logout-button").addEventListener("click", () => {
+  localStorage.removeItem("token");
+  localStorage.removeItem("userId");
+  window.location.href = "index.html";
+});
+
 document.querySelector(".logo").addEventListener("click", () => {
   window.location.href = "guitar.html";
 });
@@ -1635,7 +1686,6 @@ function saveSettings() {
   localStorage.setItem("stringKeys", stringKeys.join(","));
 }
 
-// 키보드 설정 저장
 document
   .getElementById("keyboard-settings-form")
   .addEventListener("submit", (e) => {
@@ -1647,18 +1697,16 @@ document
     alert("키보드 설정이 저장되었습니다.");
   });
 
-// 코드/현 상태
 let currentChord = null;
 let currentChordType = null;
 let isRecording = false;
 let mediaRecorder;
 let recordedChunks = [];
-let audioContext = null; // AudioContext를 아직 생성하지 않음
-let dest = null; // 녹음용 MediaStreamDestination
+let audioContext = null;
+let dest = null;
 
 const activeStrings = new Set();
 
-// 사용자 인터랙션 시 AudioContext 생성 및 resume
 document.addEventListener(
   "click",
   async () => {
@@ -1667,7 +1715,6 @@ document.addEventListener(
     }
     if (audioContext.state === "suspended") {
       await audioContext.resume();
-      console.log("AudioContext resumed after user interaction.");
     }
   },
   { once: true }
@@ -1677,37 +1724,30 @@ document.addEventListener("keydown", (e) => {
   const upperKey = e.key.toUpperCase();
   const lowerKey = e.key.toLowerCase();
 
-  // 코드 키 처리: 바로 currentChord에 반영
   if (codeKeys.includes(upperKey)) {
     currentChord = upperKey;
     updateChord();
   }
 
-  // 코드 모드 키 처리: 바로 currentChordType에 반영
   if (chordTypeKeys.includes(lowerKey)) {
     currentChordType = lowerKey;
     updateChord();
   }
 
-  // 현 연주 키 처리
   if (stringKeys.includes(lowerKey)) {
     activeStrings.add(lowerKey);
-    console.log(`KeyDown: ${lowerKey} (stringKeys)`);
     playString(lowerKey);
   }
 });
 
 document.addEventListener("keyup", (e) => {
   const lowerKey = e.key.toLowerCase();
-
-  // 현 키는 뗄 때 제거
   if (stringKeys.includes(lowerKey)) {
     activeStrings.delete(lowerKey);
   }
 });
 
 function updateChord() {
-  console.log("updateChord:", { currentChord, currentChordType });
   displayCurrentChord();
 }
 
@@ -1717,7 +1757,6 @@ function displayCurrentChord() {
     let chordTypeName = getChordTypeName(currentChordType);
     displayElement.textContent = `선택된 코드: ${currentChord}${chordTypeName}`;
   } else if (currentChord && !currentChordType) {
-    // 코드만 있고 코드 타입이 없을 수도 있으므로 처리
     displayElement.textContent = `선택된 코드: ${currentChord}`;
   } else {
     displayElement.textContent = "선택된 코드: 없음";
@@ -1737,51 +1776,28 @@ function getChordTypeName(chordTypeKey) {
 }
 
 function playString(key) {
-  if (!audioContext || audioContext.state !== "running") {
-    console.log("AudioContext not running, cannot play");
-    return;
-  }
+  if (!audioContext || audioContext.state !== "running") return;
 
   const index = stringKeys.indexOf(key);
-  if (index === -1) {
-    console.log(`Invalid key: ${key}, no stringNumber found in stringKeys`);
-    return;
-  }
+  if (index === -1) return;
 
-  // stringKeys[0] -> 6번 현, stringKeys[1] -> 5번 현 ... stringKeys[5] -> 1번 현
   const stringNumber = (6 - index).toString();
 
   let fretNumber = 0;
   if (currentChord && currentChordType) {
     const chord = chordData[currentChord][currentChordType];
-    if (chord) {
-      fretNumber = chord[6 - parseInt(stringNumber)];
-    } else {
-      fretNumber = 0;
-    }
-  } else {
-    fretNumber = 0;
+    fretNumber = chord ? chord[6 - parseInt(stringNumber)] : 0;
   }
 
-  // fretNumber 범위 확인 (0~5 범위 내로)
   if (fretNumber < 0 || fretNumber > 5) {
     fretNumber = 0;
   }
 
   const baseFrequency = stringFrequencies[parseInt(stringNumber)];
-  if (!baseFrequency) {
-    console.log(`No baseFrequency for string ${stringNumber}`);
-    return;
-  }
+  if (!baseFrequency) return;
 
   const frequency = baseFrequency[fretNumber];
-
-  console.log(
-    `playString: chord=${currentChord}, type=${currentChordType}, string=${stringNumber}, fret=${fretNumber}, frequency=${frequency}`
-  );
-
   if (!frequency) {
-    console.log("No frequency found for this fret, just animating string");
     animateString(stringNumber);
     return;
   }
@@ -1791,12 +1807,7 @@ function playString(key) {
 }
 
 function playGuitarSound(frequency) {
-  if (!audioContext || audioContext.state !== "running") {
-    console.log("AudioContext not running in playGuitarSound");
-    return;
-  }
-
-  console.log(`playGuitarSound: frequency=${frequency}Hz`);
+  if (!audioContext || audioContext.state !== "running") return;
 
   const now = audioContext.currentTime;
   const oscillator = audioContext.createOscillator();
@@ -1810,11 +1821,8 @@ function playGuitarSound(frequency) {
   oscillator.frequency.setValueAtTime(frequency, now);
   oscillator.connect(filter);
   filter.connect(gainNode);
-
-  // 기존 destination 출력
   gainNode.connect(audioContext.destination);
 
-  // dest가 존재하면 녹음용 dest에도 연결
   if (dest) {
     gainNode.connect(dest);
   }
@@ -1848,10 +1856,7 @@ document.getElementById("record-button").addEventListener("click", () => {
 });
 
 async function startRecording() {
-  if (!audioContext || audioContext.state !== "running") {
-    console.log("AudioContext not running, cannot start recording");
-    return;
-  }
+  if (!audioContext || audioContext.state !== "running") return;
 
   recordedChunks = [];
   dest = audioContext.createMediaStreamDestination();
@@ -1868,8 +1873,14 @@ function stopRecording() {
   if (!mediaRecorder) return;
   mediaRecorder.stop();
   mediaRecorder.onstop = () => {
-    // webm 형식으로 Blob 생성
     const blob = new Blob(recordedChunks, { type: "audio/webm" });
+
+    const recordingName = prompt(
+      "녹음한 파일의 이름을 입력하세요(확장자 제외)",
+      "myRecording"
+    );
+    const filename = recordingName ? recordingName + ".webm" : "recorded.webm";
+
     const url = URL.createObjectURL(blob);
 
     const playbackButton = document.createElement("button");
@@ -1881,7 +1892,7 @@ function stopRecording() {
 
     const downloadButton = document.createElement("a");
     downloadButton.href = url;
-    downloadButton.download = "recorded.webm";
+    downloadButton.download = filename;
     downloadButton.textContent = "다운로드";
 
     const recordingStatus = document.getElementById("recording-status");
@@ -1906,7 +1917,7 @@ document.getElementById("sheet-upload-form").addEventListener("submit", (e) => {
   reader.readAsDataURL(file);
 });
 
-// 악기 선택(추가 예정)
+// 악기 선택 알림
 document.getElementById("instrument-select").addEventListener("change", (e) => {
   alert(e.target.value + "는 아직 구현되지 않았습니다.");
 });
@@ -2257,7 +2268,6 @@ window.onload = async () => {
 
   const data = await response.json();
   if (response.ok) {
-    // 프로필 정보 표시
     document.getElementById("nickname-display").textContent =
       data.user.nickname;
 
@@ -2265,23 +2275,32 @@ window.onload = async () => {
       ? data.user.profilePicture
       : "/assets/images/profiles/default-profile.png";
 
-    // 프로필 이미지는 SERVER_URL + 절대경로 로드
     document.getElementById("profile-picture").src =
       SERVER_URL + profilePicPath;
 
     const musicList = document.getElementById("music-list");
-    data.user.uploads.forEach((music) => {
-      const listItem = document.createElement("li");
-      listItem.textContent = music.title;
-      const playButton = document.createElement("button");
-      playButton.textContent = "재생";
-      playButton.onclick = () => {
-        const audio = new Audio(`${SERVER_URL}${music.fileUrl}`);
-        audio.play();
-      };
-      listItem.appendChild(playButton);
-      musicList.appendChild(listItem);
-    });
+    musicList.innerHTML = "";
+
+    // 업로드한 음악/녹음한 음악(이미 library.js와 동일한 로직 사용 가능하다고 가정)
+    // 여기서는 같은 사용자 업로드 음악을 표시
+    if (!data.user.uploads || data.user.uploads.length === 0) {
+      const li = document.createElement("li");
+      li.textContent = "등록된 음악이 없습니다.";
+      musicList.appendChild(li);
+    } else {
+      data.user.uploads.forEach((music) => {
+        const listItem = document.createElement("li");
+        listItem.textContent = music.title + " ";
+        const playButton = document.createElement("button");
+        playButton.textContent = "재생";
+        playButton.onclick = () => {
+          const audio = new Audio(`${SERVER_URL}${music.fileUrl}`);
+          audio.play();
+        };
+        listItem.appendChild(playButton);
+        musicList.appendChild(listItem);
+      });
+    }
   } else {
     alert(data.message);
   }
@@ -2341,7 +2360,6 @@ closeModalBtn.addEventListener("click", () => {
 profileImageList.addEventListener("click", async (e) => {
   if (e.target.tagName === "IMG") {
     const selectedImg = e.target.getAttribute("data-img");
-    // 프로필 사진 업데이트 요청
     const res = await fetch(`${SERVER_URL}/api/users/profile-picture`, {
       method: "PUT",
       headers: {
@@ -2358,6 +2376,37 @@ profileImageList.addEventListener("click", async (e) => {
     }
   }
 });
+
+// 새 프로필 이미지 파일 업로드 처리
+document
+  .getElementById("upload-profile-pic-form")
+  .addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const fileInput = document.getElementById("new-profile-pic-file");
+    const file = fileInput.files[0];
+    if (!file) return alert("파일을 선택해주세요.");
+
+    const formData = new FormData();
+    formData.append("profilePictureFile", file);
+
+    // 프로필 업로드용 엔드포인트(파일로 업로드하는 pretend)
+    // 서버에서도 multer등으로 처리 필요(여기서는 가정)
+    const res = await fetch(`${SERVER_URL}/api/users/profile-picture`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+    const resData = await res.json();
+    alert(resData.message);
+    if (res.ok) {
+      // 변경된 프로필 반영
+      document.getElementById("profile-picture").src =
+        SERVER_URL + "/uploads/" + file.name;
+      modal.style.display = "none";
+    }
+  });
 
 
 파일경로: frontend\js\upload.js
