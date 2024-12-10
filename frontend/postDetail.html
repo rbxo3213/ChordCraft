@@ -5,7 +5,44 @@
     <title>게시글 상세보기</title>
     <link rel="stylesheet" href="css/style.css" />
     <style>
-      /* 레이아웃 추가: post-detail-container, post-info, post-content-section, comment-section은 style.css에 추가됨 */
+      /* 기존에 post-detail-container 등 스타일은 style.css에서 처리.
+         여기서는 music, content, like를 하나의 박스로 묶는 .post-main-content 추가 */
+      .post-main-content {
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        padding: 15px;
+        margin-bottom: 20px;
+      }
+      .post-main-content .music-play-button {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      .post-main-content .post-body-text {
+        margin-bottom: 20px;
+        text-align: left;
+      }
+      .post-main-content .like-section {
+        text-align: center;
+      }
+      .like-button {
+        font-size: 24px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        transition: transform 0.3s, color 0.3s;
+        color: gray;
+      }
+      .like-button:hover {
+        transform: scale(1.1);
+      }
+      .like-button.liked {
+        color: red;
+      }
+      .like-count {
+        margin-top: 10px;
+        font-weight: bold;
+      }
     </style>
   </head>
   <body>
@@ -25,15 +62,16 @@
         </div>
       </div>
 
-      <div class="post-content-section">
-        <p id="post-content"></p>
-      </div>
-
-      <div class="post-content-section" id="post-music"></div>
-
-      <div class="post-content-section post-buttons">
-        <span>좋아요: <span id="like-count"></span></span>
-        <button id="like-button">좋아요</button>
+      <!-- 하나의 박스에 음악재생, 본문, 좋아요를 순서대로 배치 -->
+      <div class="post-main-content">
+        <div class="music-play-button" id="post-music"></div>
+        <div class="post-body-text">
+          <p id="post-content"></p>
+        </div>
+        <div class="like-section">
+          <button id="like-button" class="like-button">♥</button>
+          <div class="like-count">좋아요: <span id="like-count">0</span></div>
+        </div>
       </div>
 
       <div class="comment-section">

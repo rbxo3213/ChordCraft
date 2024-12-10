@@ -1,5 +1,7 @@
 // backend/controllers/postController.js
 const Post = require("../models/Post");
+const fs = require("fs");
+const path = require("path");
 
 exports.createPost = async (req, res) => {
   try {
@@ -25,7 +27,6 @@ exports.createPost = async (req, res) => {
 
 exports.getPosts = async (req, res) => {
   try {
-    // 모든 게시글 조회 + likeCount 필드 추가
     const posts = await Post.find({})
       .populate("author", "nickname profilePicture")
       .sort({ createdAt: -1 });
@@ -72,7 +73,7 @@ exports.getPostById = async (req, res) => {
     if (!post) return res.status(404).json({ message: "게시글 없음" });
 
     const postObj = post.toObject();
-    postObj.likeCount = post.likes.length; // likeCount 추가
+    postObj.likeCount = post.likes.length;
 
     res.status(200).json({ post: postObj });
   } catch (err) {
@@ -82,10 +83,9 @@ exports.getPostById = async (req, res) => {
 };
 
 exports.updatePost = async (req, res) => {
-  // 내용 동일
   try {
     const { id } = req.params;
-    const { title, content } = req.body;
+    const { title, content, removeMusic } = req.body;
 
     const post = await Post.findById(id);
     if (!post) return res.status(404).json({ message: "게시글 없음" });
@@ -95,8 +95,37 @@ exports.updatePost = async (req, res) => {
 
     post.title = title;
     post.content = content;
-    await post.save();
 
+    // 음악 파일 처리 로직
+    // 실제 프로젝트 구조에 따라 파일 경로 조정 필요
+    // 여기서는 uploads 폴더가 backend 하위라고 가정
+    // post.musicFileUrl가 "/uploads/filename" 형태이므로 basename 추출
+    const uploadsPath = path.join(__dirname, "../uploads");
+
+    if (removeMusic === "true") {
+      // 기존 파일 삭제
+      if (post.musicFileUrl) {
+        const oldFilename = path.basename(post.musicFileUrl);
+        const oldFilePath = path.join(uploadsPath, oldFilename);
+        if (fs.existsSync(oldFilePath)) {
+          fs.unlinkSync(oldFilePath);
+        }
+      }
+      post.musicFileUrl = null;
+    } else if (req.file) {
+      // 새 파일 업로드 -> 기존 파일 삭제 후 교체
+      if (post.musicFileUrl) {
+        const oldFilename = path.basename(post.musicFileUrl);
+        const oldFilePath = path.join(uploadsPath, oldFilename);
+        if (fs.existsSync(oldFilePath)) {
+          fs.unlinkSync(oldFilePath);
+        }
+      }
+      post.musicFileUrl = `/uploads/${req.file.filename}`;
+    }
+    // 파일 변경 없고 removeMusic 없으면 기존 유지
+
+    await post.save();
     res.status(200).json({ message: "게시글 수정 성공", post });
   } catch (err) {
     console.error(err);
@@ -105,13 +134,22 @@ exports.updatePost = async (req, res) => {
 };
 
 exports.deletePost = async (req, res) => {
-  // 내용 동일
   try {
     const { id } = req.params;
     const post = await Post.findById(id);
     if (!post) return res.status(404).json({ message: "게시글 없음" });
     if (post.author.toString() !== req.userId) {
       return res.status(403).json({ message: "삭제 권한 없음" });
+    }
+
+    // 삭제 시 음악파일도 제거
+    if (post.musicFileUrl) {
+      const uploadsPath = path.join(__dirname, "../uploads");
+      const oldFilename = path.basename(post.musicFileUrl);
+      const oldFilePath = path.join(uploadsPath, oldFilename);
+      if (fs.existsSync(oldFilePath)) {
+        fs.unlinkSync(oldFilePath);
+      }
     }
 
     await Post.findByIdAndDelete(id);
@@ -123,7 +161,6 @@ exports.deletePost = async (req, res) => {
 };
 
 exports.addComment = async (req, res) => {
-  // 내용 동일
   try {
     const { id } = req.params;
     const { content } = req.body;
@@ -141,7 +178,6 @@ exports.addComment = async (req, res) => {
 };
 
 exports.updateComment = async (req, res) => {
-  // 내용 동일
   try {
     const { id, commentId } = req.params;
     const { content } = req.body;
@@ -164,7 +200,6 @@ exports.updateComment = async (req, res) => {
 };
 
 exports.deleteComment = async (req, res) => {
-  // 내용 동일
   try {
     const { id, commentId } = req.params;
     const post = await Post.findById(id);
@@ -187,7 +222,6 @@ exports.deleteComment = async (req, res) => {
 };
 
 exports.toggleLike = async (req, res) => {
-  // 내용 동일
   try {
     const { id } = req.params;
     const post = await Post.findById(id);

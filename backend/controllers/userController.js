@@ -3,9 +3,9 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const validator = require("validator");
+const path = require("path");
 require("dotenv").config();
 
-// 회원가입
 exports.register = async (req, res) => {
   try {
     const { username, password, nickname } = req.body;
@@ -47,7 +47,6 @@ exports.register = async (req, res) => {
   }
 };
 
-// 로그인
 exports.login = async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -83,7 +82,6 @@ exports.login = async (req, res) => {
   }
 };
 
-// 프로필 조회
 exports.getUserProfile = async (req, res) => {
   try {
     const userId = req.userId;
@@ -99,7 +97,6 @@ exports.getUserProfile = async (req, res) => {
   }
 };
 
-// 비밀번호 변경
 exports.changePassword = async (req, res) => {
   try {
     const userId = req.userId;
@@ -130,7 +127,6 @@ exports.changePassword = async (req, res) => {
   }
 };
 
-// 회원탈퇴
 exports.deleteUser = async (req, res) => {
   try {
     const userId = req.userId;
@@ -142,16 +138,33 @@ exports.deleteUser = async (req, res) => {
   }
 };
 
-// 프로필 사진 업데이트
 exports.updateProfilePicture = async (req, res) => {
   try {
     const userId = req.userId;
-    const { profilePicture } = req.body; // 미리 준비된 이미지 경로
     const user = await User.findById(userId);
     if (!user) return res.status(400).json({ message: "사용자 없음" });
-    user.profilePicture = profilePicture;
-    await user.save();
-    res.status(200).json({ message: "프로필 사진 변경 성공" });
+
+    if (req.file) {
+      // 새 파일 업로드
+      const fileUrl = `/uploads/${req.file.filename}`;
+      user.profilePicture = fileUrl;
+      await user.save();
+      return res
+        .status(200)
+        .json({ message: "프로필 사진 변경 성공", fileUrl });
+    } else if (req.body.profilePicture) {
+      // 기존 이미지를 선택한 경우
+      user.profilePicture = req.body.profilePicture;
+      await user.save();
+      return res
+        .status(200)
+        .json({
+          message: "프로필 사진 변경 성공",
+          fileUrl: req.body.profilePicture,
+        });
+    } else {
+      return res.status(400).json({ message: "프로필 사진 정보 없음" });
+    }
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "서버 오류" });

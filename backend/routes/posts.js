@@ -21,12 +21,13 @@ router
   .get(postController.getPosts)
   .post(authMiddleware, upload.single("music"), postController.createPost);
 
-router.get("/mine", authMiddleware, postController.getMyPosts); // 추가된 라우트
+router.get("/mine", authMiddleware, postController.getMyPosts);
 
 router
   .route("/:id")
   .get(postController.getPostById)
-  .put(authMiddleware, postController.updatePost)
+  // PUT 요청에도 upload.single("music") 적용
+  .put(authMiddleware, upload.single("music"), postController.updatePost)
   .delete(authMiddleware, postController.deletePost);
 
 // 댓글 CRUD

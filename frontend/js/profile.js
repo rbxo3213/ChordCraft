@@ -1,4 +1,7 @@
 // frontend/js/profile.js
+// 수정: 업로드된 이미지 경로를 서버 응답으로부터 받아 즉시 반영.
+// CORS / CORB 문제 해결 위해서는 서버에서 Access-Control-Allow-Origin 헤더 설정 필요.
+// 여기서는 프론트만 수정.
 const SERVER_URL = "http://localhost:5000";
 const token = localStorage.getItem("token");
 
@@ -6,6 +9,8 @@ if (!token) {
   alert("로그인이 필요합니다.");
   window.location.href = "index.html";
 }
+
+let userData = null;
 
 window.onload = async () => {
   const response = await fetch(`${SERVER_URL}/api/users/profile`, {
@@ -16,6 +21,7 @@ window.onload = async () => {
 
   const data = await response.json();
   if (response.ok) {
+    userData = data.user;
     document.getElementById("nickname-display").textContent =
       data.user.nickname;
 
@@ -28,9 +34,6 @@ window.onload = async () => {
 
     const musicList = document.getElementById("music-list");
     musicList.innerHTML = "";
-
-    // 업로드한 음악/녹음한 음악(이미 library.js와 동일한 로직 사용 가능하다고 가정)
-    // 여기서는 같은 사용자 업로드 음악을 표시
     if (!data.user.uploads || data.user.uploads.length === 0) {
       const li = document.createElement("li");
       li.textContent = "등록된 음악이 없습니다.";
@@ -54,7 +57,7 @@ window.onload = async () => {
   }
 };
 
-// 비밀번호 변경
+// 비밀번호 변경 동일
 document
   .getElementById("change-password-form")
   .addEventListener("submit", async (e) => {
@@ -73,7 +76,7 @@ document
     alert(data.message);
   });
 
-// 회원탈퇴
+// 회원탈퇴 동일
 document
   .getElementById("delete-account")
   .addEventListener("click", async () => {
@@ -119,13 +122,14 @@ profileImageList.addEventListener("click", async (e) => {
     const resData = await res.json();
     alert(resData.message);
     if (res.ok) {
+      // 즉시 반영
       document.getElementById("profile-picture").src = SERVER_URL + selectedImg;
       modal.style.display = "none";
     }
   }
 });
 
-// 새 프로필 이미지 파일 업로드 처리
+// 새 프로필 이미지 파일 업로드
 document
   .getElementById("upload-profile-pic-form")
   .addEventListener("submit", async (e) => {
@@ -137,8 +141,6 @@ document
     const formData = new FormData();
     formData.append("profilePictureFile", file);
 
-    // 프로필 업로드용 엔드포인트(파일로 업로드하는 pretend)
-    // 서버에서도 multer등으로 처리 필요(여기서는 가정)
     const res = await fetch(`${SERVER_URL}/api/users/profile-picture`, {
       method: "PUT",
       headers: {
@@ -148,10 +150,10 @@ document
     });
     const resData = await res.json();
     alert(resData.message);
-    if (res.ok) {
-      // 변경된 프로필 반영
+    if (res.ok && resData.fileUrl) {
+      // 서버에서 fileUrl을 반환한다고 가정하면, 즉시 반영 가능
       document.getElementById("profile-picture").src =
-        SERVER_URL + "/uploads/" + file.name;
+        SERVER_URL + resData.fileUrl;
       modal.style.display = "none";
     }
   });

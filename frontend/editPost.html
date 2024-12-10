@@ -5,29 +5,48 @@
     <title>글 수정</title>
     <link rel="stylesheet" href="css/style.css" />
     <style>
-      .form-container {
+      .edit-post-container {
+        border: 2px solid #ccc;
+        padding: 20px;
+        background-color: #faf8ef;
+        border-radius: 8px;
         width: 80%;
-        margin: 20px auto;
+        margin: 120px auto;
       }
-      .form-container input[type="text"],
-      .form-container textarea {
-        width: 100%;
+      .edit-post-container h1 {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      .edit-post-container form {
+        display: flex;
+        flex-direction: column;
+      }
+      .edit-post-container input[type="text"],
+      .edit-post-container textarea {
+        margin-bottom: 10px;
+        padding: 8px;
+        font-size: 14px;
+      }
+      .edit-post-container input[type="file"] {
         margin-bottom: 10px;
       }
-      .form-container button {
-        float: right;
-      }
-
-      /* 음악 파일 수정 추가 */
-      #edit-post-music-file {
+      .edit-post-container .current-file {
         margin-bottom: 10px;
+        font-size: 14px;
+        color: #333;
+      }
+      .edit-post-container .file-actions {
+        margin-bottom: 10px;
+      }
+      .edit-post-container button {
+        align-self: flex-end;
       }
     </style>
   </head>
   <body>
     <a href="guitar.html" class="logo">ChordCraft</a>
-    <h1 style="text-align: center">글 수정</h1>
-    <div class="form-container">
+    <div class="edit-post-container">
+      <h1>글 수정</h1>
       <form id="edit-post-form">
         <input
           type="text"
@@ -37,6 +56,12 @@
         /><br />
         <textarea id="edit-post-content" placeholder="내용" required></textarea
         ><br />
+        <div class="current-file" id="current-file-info" style="display: none">
+          현재 음악 파일: <span id="current-file-name"></span>
+        </div>
+        <div class="file-actions" id="file-actions" style="display: none">
+          <button type="button" id="delete-file-button">파일 삭제</button>
+        </div>
         <input type="file" id="edit-post-music-file" accept="audio/*" /><br />
         <button type="submit">수정</button>
       </form>

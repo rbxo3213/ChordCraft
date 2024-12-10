@@ -2,7 +2,7 @@
 const SERVER_URL = "http://localhost:5000";
 const token = localStorage.getItem("token");
 let currentPostId = null;
-let currentUserId = localStorage.getItem("userId"); // 로그인한 사용자 ID
+let currentUserId = localStorage.getItem("userId");
 
 async function loadPostDetail() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -24,25 +24,34 @@ async function loadPostDetail() {
 
   const post = data.post;
   document.getElementById("post-title").textContent = post.title;
-  document.getElementById("post-author").textContent = `작성자: ${
-    post.author ? post.author.nickname : "알 수 없음"
-  }`;
+  document.getElementById("post-author").textContent = post.author
+    ? post.author.nickname
+    : "알 수 없음";
   const date = new Date(post.createdAt);
-  document.getElementById(
-    "post-date"
-  ).textContent = `작성시간: ${date.toLocaleString()}`;
+  document.getElementById("post-date").textContent = date.toLocaleString();
   document.getElementById("post-content").textContent = post.content;
   document.getElementById("like-count").textContent = post.likeCount || 0;
+
+  // 초기 좋아요 상태 반영
+  const likeButton = document.getElementById("like-button");
+  const userId = currentUserId;
+  const userLiked =
+    post.likes && post.likes.some((uid) => uid.toString() === userId);
+  if (userLiked) {
+    likeButton.classList.add("liked");
+  } else {
+    likeButton.classList.remove("liked");
+  }
 
   const postMusicDiv = document.getElementById("post-music");
   postMusicDiv.innerHTML = "";
   if (post.musicFileUrl) {
     const playButton = document.createElement("button");
     playButton.textContent = "음악 재생";
-    playButton.onclick = () => {
+    playButton.addEventListener("click", () => {
       const audio = new Audio(`${SERVER_URL}${post.musicFileUrl}`);
       audio.play();
-    };
+    });
     postMusicDiv.appendChild(playButton);
   }
 
@@ -55,9 +64,7 @@ async function loadPostDetail() {
     const authorName = comment.author ? comment.author.nickname : "알 수 없음";
     div.innerHTML = `<span class="comment-author">${authorName}</span>: ${comment.content}`;
 
-    // 댓글 작성자 본인이면 수정/삭제 버튼 표시
     if (comment.author && comment.author._id === currentUserId) {
-      // 오른쪽 끝에 버튼을 배치하기 위한 컨테이너
       const btnContainer = document.createElement("span");
       btnContainer.style.float = "right";
       btnContainer.style.marginLeft = "10px";
@@ -162,13 +169,19 @@ document.getElementById("like-button").addEventListener("click", async () => {
   const data = await res.json();
   if (res.ok) {
     document.getElementById("like-count").textContent = data.likeCount;
+    const likeButton = document.getElementById("like-button");
+    // 토글 liked 클래스
+    if (likeButton.classList.contains("liked")) {
+      likeButton.classList.remove("liked");
+    } else {
+      likeButton.classList.add("liked");
+    }
   } else {
     alert(data.message);
   }
 });
 
 document.getElementById("edit-button").addEventListener("click", () => {
-  // 수정 버튼 클릭 시 editPost.html로 이동
   window.location.href = `editPost.html?postId=${currentPostId}`;
 });
 

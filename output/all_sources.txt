@@ -76,6 +76,8 @@ exports.getUserMusic = async (req, res) => {
 파일경로: backend\controllers\postController.js
 // backend/controllers/postController.js
 const Post = require("../models/Post");
+const fs = require("fs");
+const path = require("path");
 
 exports.createPost = async (req, res) => {
   try {
@@ -101,7 +103,6 @@ exports.createPost = async (req, res) => {
 
 exports.getPosts = async (req, res) => {
   try {
-    // 모든 게시글 조회 + likeCount 필드 추가
     const posts = await Post.find({})
       .populate("author", "nickname profilePicture")
       .sort({ createdAt: -1 });
@@ -148,7 +149,7 @@ exports.getPostById = async (req, res) => {
     if (!post) return res.status(404).json({ message: "게시글 없음" });
 
     const postObj = post.toObject();
-    postObj.likeCount = post.likes.length; // likeCount 추가
+    postObj.likeCount = post.likes.length;
 
     res.status(200).json({ post: postObj });
   } catch (err) {
@@ -158,10 +159,9 @@ exports.getPostById = async (req, res) => {
 };
 
 exports.updatePost = async (req, res) => {
-  // 내용 동일
   try {
     const { id } = req.params;
-    const { title, content } = req.body;
+    const { title, content, removeMusic } = req.body;
 
     const post = await Post.findById(id);
     if (!post) return res.status(404).json({ message: "게시글 없음" });
@@ -171,8 +171,37 @@ exports.updatePost = async (req, res) => {
 
     post.title = title;
     post.content = content;
-    await post.save();
 
+    // 음악 파일 처리 로직
+    // 실제 프로젝트 구조에 따라 파일 경로 조정 필요
+    // 여기서는 uploads 폴더가 backend 하위라고 가정
+    // post.musicFileUrl가 "/uploads/filename" 형태이므로 basename 추출
+    const uploadsPath = path.join(__dirname, "../uploads");
+
+    if (removeMusic === "true") {
+      // 기존 파일 삭제
+      if (post.musicFileUrl) {
+        const oldFilename = path.basename(post.musicFileUrl);
+        const oldFilePath = path.join(uploadsPath, oldFilename);
+        if (fs.existsSync(oldFilePath)) {
+          fs.unlinkSync(oldFilePath);
+        }
+      }
+      post.musicFileUrl = null;
+    } else if (req.file) {
+      // 새 파일 업로드 -> 기존 파일 삭제 후 교체
+      if (post.musicFileUrl) {
+        const oldFilename = path.basename(post.musicFileUrl);
+        const oldFilePath = path.join(uploadsPath, oldFilename);
+        if (fs.existsSync(oldFilePath)) {
+          fs.unlinkSync(oldFilePath);
+        }
+      }
+      post.musicFileUrl = `/uploads/${req.file.filename}`;
+    }
+    // 파일 변경 없고 removeMusic 없으면 기존 유지
+
+    await post.save();
     res.status(200).json({ message: "게시글 수정 성공", post });
   } catch (err) {
     console.error(err);
@@ -181,13 +210,22 @@ exports.updatePost = async (req, res) => {
 };
 
 exports.deletePost = async (req, res) => {
-  // 내용 동일
   try {
     const { id } = req.params;
     const post = await Post.findById(id);
     if (!post) return res.status(404).json({ message: "게시글 없음" });
     if (post.author.toString() !== req.userId) {
       return res.status(403).json({ message: "삭제 권한 없음" });
+    }
+
+    // 삭제 시 음악파일도 제거
+    if (post.musicFileUrl) {
+      const uploadsPath = path.join(__dirname, "../uploads");
+      const oldFilename = path.basename(post.musicFileUrl);
+      const oldFilePath = path.join(uploadsPath, oldFilename);
+      if (fs.existsSync(oldFilePath)) {
+        fs.unlinkSync(oldFilePath);
+      }
     }
 
     await Post.findByIdAndDelete(id);
@@ -199,7 +237,6 @@ exports.deletePost = async (req, res) => {
 };
 
 exports.addComment = async (req, res) => {
-  // 내용 동일
   try {
     const { id } = req.params;
     const { content } = req.body;
@@ -217,7 +254,6 @@ exports.addComment = async (req, res) => {
 };
 
 exports.updateComment = async (req, res) => {
-  // 내용 동일
   try {
     const { id, commentId } = req.params;
     const { content } = req.body;
@@ -240,7 +276,6 @@ exports.updateComment = async (req, res) => {
 };
 
 exports.deleteComment = async (req, res) => {
-  // 내용 동일
   try {
     const { id, commentId } = req.params;
     const post = await Post.findById(id);
@@ -263,7 +298,6 @@ exports.deleteComment = async (req, res) => {
 };
 
 exports.toggleLike = async (req, res) => {
-  // 내용 동일
   try {
     const { id } = req.params;
     const post = await Post.findById(id);
@@ -296,9 +330,9 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const validator = require("validator");
+const path = require("path");
 require("dotenv").config();
 
-// 회원가입
 exports.register = async (req, res) => {
   try {
     const { username, password, nickname } = req.body;
@@ -340,7 +374,6 @@ exports.register = async (req, res) => {
   }
 };
 
-// 로그인
 exports.login = async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -376,7 +409,6 @@ exports.login = async (req, res) => {
   }
 };
 
-// 프로필 조회
 exports.getUserProfile = async (req, res) => {
   try {
     const userId = req.userId;
@@ -392,7 +424,6 @@ exports.getUserProfile = async (req, res) => {
   }
 };
 
-// 비밀번호 변경
 exports.changePassword = async (req, res) => {
   try {
     const userId = req.userId;
@@ -423,7 +454,6 @@ exports.changePassword = async (req, res) => {
   }
 };
 
-// 회원탈퇴
 exports.deleteUser = async (req, res) => {
   try {
     const userId = req.userId;
@@ -435,16 +465,33 @@ exports.deleteUser = async (req, res) => {
   }
 };
 
-// 프로필 사진 업데이트
 exports.updateProfilePicture = async (req, res) => {
   try {
     const userId = req.userId;
-    const { profilePicture } = req.body; // 미리 준비된 이미지 경로
     const user = await User.findById(userId);
     if (!user) return res.status(400).json({ message: "사용자 없음" });
-    user.profilePicture = profilePicture;
-    await user.save();
-    res.status(200).json({ message: "프로필 사진 변경 성공" });
+
+    if (req.file) {
+      // 새 파일 업로드
+      const fileUrl = `/uploads/${req.file.filename}`;
+      user.profilePicture = fileUrl;
+      await user.save();
+      return res
+        .status(200)
+        .json({ message: "프로필 사진 변경 성공", fileUrl });
+    } else if (req.body.profilePicture) {
+      // 기존 이미지를 선택한 경우
+      user.profilePicture = req.body.profilePicture;
+      await user.save();
+      return res
+        .status(200)
+        .json({
+          message: "프로필 사진 변경 성공",
+          fileUrl: req.body.profilePicture,
+        });
+    } else {
+      return res.status(400).json({ message: "프로필 사진 정보 없음" });
+    }
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "서버 오류" });
@@ -587,12 +634,13 @@ router
   .get(postController.getPosts)
   .post(authMiddleware, upload.single("music"), postController.createPost);
 
-router.get("/mine", authMiddleware, postController.getMyPosts); // 추가된 라우트
+router.get("/mine", authMiddleware, postController.getMyPosts);
 
 router
   .route("/:id")
   .get(postController.getPostById)
-  .put(authMiddleware, postController.updatePost)
+  // PUT 요청에도 upload.single("music") 적용
+  .put(authMiddleware, upload.single("music"), postController.updatePost)
   .delete(authMiddleware, postController.deletePost);
 
 // 댓글 CRUD
@@ -620,6 +668,18 @@ const express = require("express");
 const router = express.Router();
 const userController = require("../controllers/userController");
 const authMiddleware = require("../middlewares/authMiddleware");
+const multer = require("multer");
+const path = require("path");
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, path.join(__dirname, "../uploads/"));
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname));
+  },
+});
+const upload = multer({ storage });
 
 // 회원가입
 router.post("/register", userController.register);
@@ -636,10 +696,11 @@ router.post("/change-password", authMiddleware, userController.changePassword);
 // 회원탈퇴
 router.delete("/delete", authMiddleware, userController.deleteUser);
 
-// 프로필 사진 변경
+// 프로필 사진 변경 (form-data로 profilePictureFile)
 router.put(
   "/profile-picture",
   authMiddleware,
+  upload.single("profilePictureFile"),
   userController.updateProfilePicture
 );
 
@@ -750,29 +811,48 @@ module.exports = router;
     <title>글 수정</title>
     <link rel="stylesheet" href="css/style.css" />
     <style>
-      .form-container {
+      .edit-post-container {
+        border: 2px solid #ccc;
+        padding: 20px;
+        background-color: #faf8ef;
+        border-radius: 8px;
         width: 80%;
-        margin: 20px auto;
+        margin: 120px auto;
       }
-      .form-container input[type="text"],
-      .form-container textarea {
-        width: 100%;
+      .edit-post-container h1 {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      .edit-post-container form {
+        display: flex;
+        flex-direction: column;
+      }
+      .edit-post-container input[type="text"],
+      .edit-post-container textarea {
+        margin-bottom: 10px;
+        padding: 8px;
+        font-size: 14px;
+      }
+      .edit-post-container input[type="file"] {
         margin-bottom: 10px;
       }
-      .form-container button {
-        float: right;
-      }
-
-      /* 음악 파일 수정 추가 */
-      #edit-post-music-file {
+      .edit-post-container .current-file {
         margin-bottom: 10px;
+        font-size: 14px;
+        color: #333;
+      }
+      .edit-post-container .file-actions {
+        margin-bottom: 10px;
+      }
+      .edit-post-container button {
+        align-self: flex-end;
       }
     </style>
   </head>
   <body>
     <a href="guitar.html" class="logo">ChordCraft</a>
-    <h1 style="text-align: center">글 수정</h1>
-    <div class="form-container">
+    <div class="edit-post-container">
+      <h1>글 수정</h1>
       <form id="edit-post-form">
         <input
           type="text"
@@ -782,6 +862,12 @@ module.exports = router;
         /><br />
         <textarea id="edit-post-content" placeholder="내용" required></textarea
         ><br />
+        <div class="current-file" id="current-file-info" style="display: none">
+          현재 음악 파일: <span id="current-file-name"></span>
+        </div>
+        <div class="file-actions" id="file-actions" style="display: none">
+          <button type="button" id="delete-file-button">파일 삭제</button>
+        </div>
         <input type="file" id="edit-post-music-file" accept="audio/*" /><br />
         <button type="submit">수정</button>
       </form>
@@ -799,16 +885,19 @@ module.exports = router;
     <title>Chord Craft 메인페이지</title>
     <link rel="stylesheet" href="css/style.css" />
     <style>
-      /* 로고와 타이틀 사이 여백 증가 */
       h1 {
         margin-top: 100px;
         text-align: center;
+      }
+      /* 녹음 관련 버튼 중앙 정렬용 컨테이너 */
+      .recording-container {
+        text-align: center;
+        margin: 20px 0;
       }
     </style>
   </head>
   <body>
     <a href="guitar.html" class="logo">ChordCraft</a>
-    <!-- 로그아웃 버튼 추가 -->
     <button class="logout-button" id="logout-button">로그아웃</button>
 
     <h1>Virtual Guitar 연주</h1>
@@ -823,14 +912,18 @@ module.exports = router;
       선택된 코드: 없음
     </div>
 
-    <div id="recording-status"></div>
-    <button id="record-button">녹음 시작</button>
+    <div class="recording-container">
+      <div id="recording-status"></div>
+      <button id="record-button">녹음 시작</button>
+    </div>
 
-    <form id="sheet-upload-form">
+    <form id="sheet-upload-form" style="text-align: center">
       <input type="file" id="sheet-file" accept="image/*" />
       <button type="submit">악보 업로드</button>
     </form>
-    <img id="sheet-music" alt="악보" />
+    <div style="text-align: center">
+      <img id="sheet-music" alt="악보" />
+    </div>
 
     <div id="guitar">
       <div id="guitar-body">
@@ -868,7 +961,7 @@ module.exports = router;
     </div>
 
     <h2>악기 선택</h2>
-    <div id="instruments">
+    <div id="instruments" style="text-align: center">
       <select id="instrument-select">
         <option value="guitar">기타</option>
         <option value="piano">피아노</option>
@@ -898,10 +991,9 @@ module.exports = router;
       }
       .logo-area {
         text-align: center;
-        margin-bottom: 50px; /* 여백 추가 */
       }
       .logo-area img {
-        width: 300px; /* 로고 크기 조정 */
+        width: 600px; /* 로고 크기 조정 */
         display: block;
         margin: 0 auto;
       }
@@ -1144,7 +1236,44 @@ module.exports = router;
     <title>게시글 상세보기</title>
     <link rel="stylesheet" href="css/style.css" />
     <style>
-      /* 레이아웃 추가: post-detail-container, post-info, post-content-section, comment-section은 style.css에 추가됨 */
+      /* 기존에 post-detail-container 등 스타일은 style.css에서 처리.
+         여기서는 music, content, like를 하나의 박스로 묶는 .post-main-content 추가 */
+      .post-main-content {
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        padding: 15px;
+        margin-bottom: 20px;
+      }
+      .post-main-content .music-play-button {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      .post-main-content .post-body-text {
+        margin-bottom: 20px;
+        text-align: left;
+      }
+      .post-main-content .like-section {
+        text-align: center;
+      }
+      .like-button {
+        font-size: 24px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        transition: transform 0.3s, color 0.3s;
+        color: gray;
+      }
+      .like-button:hover {
+        transform: scale(1.1);
+      }
+      .like-button.liked {
+        color: red;
+      }
+      .like-count {
+        margin-top: 10px;
+        font-weight: bold;
+      }
     </style>
   </head>
   <body>
@@ -1164,15 +1293,16 @@ module.exports = router;
         </div>
       </div>
 
-      <div class="post-content-section">
-        <p id="post-content"></p>
-      </div>
-
-      <div class="post-content-section" id="post-music"></div>
-
-      <div class="post-content-section post-buttons">
-        <span>좋아요: <span id="like-count"></span></span>
-        <button id="like-button">좋아요</button>
+      <!-- 하나의 박스에 음악재생, 본문, 좋아요를 순서대로 배치 -->
+      <div class="post-main-content">
+        <div class="music-play-button" id="post-music"></div>
+        <div class="post-body-text">
+          <p id="post-content"></p>
+        </div>
+        <div class="like-section">
+          <button id="like-button" class="like-button">♥</button>
+          <div class="like-count">좋아요: <span id="like-count">0</span></div>
+        </div>
       </div>
 
       <div class="comment-section">
@@ -1216,7 +1346,11 @@ module.exports = router;
         cursor: pointer;
       }
 
-      /* 새로운 프로필 이미지 첨부용 */
+      #page-title {
+        margin-top: 120px; /* 로고와 겹치지 않도록 상단 마진 */
+        text-align: center;
+      }
+
       #upload-profile-pic-form {
         margin-top: 20px;
       }
@@ -1224,7 +1358,7 @@ module.exports = router;
   </head>
   <body>
     <a href="guitar.html" class="logo">ChordCraft</a>
-    <h1>프로필 페이지</h1>
+    <h1 id="page-title">프로필 페이지</h1>
     <div class="profile-info">
       <img
         id="profile-picture"
@@ -1267,7 +1401,7 @@ module.exports = router;
       <button id="close-modal">닫기</button>
     </div>
 
-    <h2>내 음악 목록 (업로드 + 녹음한 음악)</h2>
+    <h2>내 음악 목록 (업로드 + 녹음)</h2>
     <ul id="music-list"></ul>
 
     <h2>비밀번호 변경</h2>
@@ -1512,6 +1646,7 @@ if (!token) {
 }
 
 let currentPostId = null;
+let currentFileUrl = null;
 
 async function loadPostData() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -1534,7 +1669,23 @@ async function loadPostData() {
   const post = data.post;
   document.getElementById("edit-post-title").value = post.title;
   document.getElementById("edit-post-content").value = post.content;
+
+  if (post.musicFileUrl) {
+    currentFileUrl = post.musicFileUrl;
+    document.getElementById("current-file-name").textContent = post.musicFileUrl
+      .split("/")
+      .pop();
+    document.getElementById("current-file-info").style.display = "block";
+    document.getElementById("file-actions").style.display = "block";
+  }
 }
+
+document.getElementById("delete-file-button").addEventListener("click", () => {
+  // 파일 삭제: currentFileUrl을 null 처리하여 서버에 수정 요청 시 파일 없는 상태로 업데이트
+  currentFileUrl = null;
+  document.getElementById("current-file-info").style.display = "none";
+  document.getElementById("file-actions").style.display = "none";
+});
 
 document
   .getElementById("edit-post-form")
@@ -1544,13 +1695,19 @@ document
     const content = document.getElementById("edit-post-content").value;
     const file = document.getElementById("edit-post-music-file").files[0];
 
-    const reqBody = { title, content };
-
     const formData = new FormData();
     formData.append("title", title);
     formData.append("content", content);
+
+    // 파일 삭제 버튼을 눌렀을 경우 currentFileUrl = null
+    // 서버에서는 이를 받아 기존 파일 삭제 처리 필요
+    // 파일이 없고 currentFileUrl도 없으면 기존 파일 제거
+    // 파일이 새로 업로드되면 그 파일로 교체
     if (file) {
       formData.append("music", file);
+    } else if (currentFileUrl === null) {
+      // 파일 없음 상태로 업데이트 (music 필드 null 처리)
+      formData.append("removeMusic", "true");
     }
 
     const response = await fetch(`${SERVER_URL}/api/posts/${currentPostId}`, {
@@ -1562,8 +1719,10 @@ document
     });
 
     const resData = await response.json();
-    alert(resData.message);
-    if (response.ok) {
+    if (!response.ok) {
+      alert(resData.message || "서버 오류 발생");
+    } else {
+      alert(resData.message);
       window.location.href = `postDetail.html?postId=${currentPostId}`;
     }
   });
@@ -2058,7 +2217,7 @@ document
 const SERVER_URL = "http://localhost:5000";
 const token = localStorage.getItem("token");
 let currentPostId = null;
-let currentUserId = localStorage.getItem("userId"); // 로그인한 사용자 ID
+let currentUserId = localStorage.getItem("userId");
 
 async function loadPostDetail() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -2080,25 +2239,34 @@ async function loadPostDetail() {
 
   const post = data.post;
   document.getElementById("post-title").textContent = post.title;
-  document.getElementById("post-author").textContent = `작성자: ${
-    post.author ? post.author.nickname : "알 수 없음"
-  }`;
+  document.getElementById("post-author").textContent = post.author
+    ? post.author.nickname
+    : "알 수 없음";
   const date = new Date(post.createdAt);
-  document.getElementById(
-    "post-date"
-  ).textContent = `작성시간: ${date.toLocaleString()}`;
+  document.getElementById("post-date").textContent = date.toLocaleString();
   document.getElementById("post-content").textContent = post.content;
   document.getElementById("like-count").textContent = post.likeCount || 0;
+
+  // 초기 좋아요 상태 반영
+  const likeButton = document.getElementById("like-button");
+  const userId = currentUserId;
+  const userLiked =
+    post.likes && post.likes.some((uid) => uid.toString() === userId);
+  if (userLiked) {
+    likeButton.classList.add("liked");
+  } else {
+    likeButton.classList.remove("liked");
+  }
 
   const postMusicDiv = document.getElementById("post-music");
   postMusicDiv.innerHTML = "";
   if (post.musicFileUrl) {
     const playButton = document.createElement("button");
     playButton.textContent = "음악 재생";
-    playButton.onclick = () => {
+    playButton.addEventListener("click", () => {
       const audio = new Audio(`${SERVER_URL}${post.musicFileUrl}`);
       audio.play();
-    };
+    });
     postMusicDiv.appendChild(playButton);
   }
 
@@ -2111,9 +2279,7 @@ async function loadPostDetail() {
     const authorName = comment.author ? comment.author.nickname : "알 수 없음";
     div.innerHTML = `<span class="comment-author">${authorName}</span>: ${comment.content}`;
 
-    // 댓글 작성자 본인이면 수정/삭제 버튼 표시
     if (comment.author && comment.author._id === currentUserId) {
-      // 오른쪽 끝에 버튼을 배치하기 위한 컨테이너
       const btnContainer = document.createElement("span");
       btnContainer.style.float = "right";
       btnContainer.style.marginLeft = "10px";
@@ -2218,13 +2384,19 @@ document.getElementById("like-button").addEventListener("click", async () => {
   const data = await res.json();
   if (res.ok) {
     document.getElementById("like-count").textContent = data.likeCount;
+    const likeButton = document.getElementById("like-button");
+    // 토글 liked 클래스
+    if (likeButton.classList.contains("liked")) {
+      likeButton.classList.remove("liked");
+    } else {
+      likeButton.classList.add("liked");
+    }
   } else {
     alert(data.message);
   }
 });
 
 document.getElementById("edit-button").addEventListener("click", () => {
-  // 수정 버튼 클릭 시 editPost.html로 이동
   window.location.href = `editPost.html?postId=${currentPostId}`;
 });
 
@@ -2251,6 +2423,9 @@ window.onload = () => {
 
 파일경로: frontend\js\profile.js
 // frontend/js/profile.js
+// 수정: 업로드된 이미지 경로를 서버 응답으로부터 받아 즉시 반영.
+// CORS / CORB 문제 해결 위해서는 서버에서 Access-Control-Allow-Origin 헤더 설정 필요.
+// 여기서는 프론트만 수정.
 const SERVER_URL = "http://localhost:5000";
 const token = localStorage.getItem("token");
 
@@ -2258,6 +2433,8 @@ if (!token) {
   alert("로그인이 필요합니다.");
   window.location.href = "index.html";
 }
+
+let userData = null;
 
 window.onload = async () => {
   const response = await fetch(`${SERVER_URL}/api/users/profile`, {
@@ -2268,6 +2445,7 @@ window.onload = async () => {
 
   const data = await response.json();
   if (response.ok) {
+    userData = data.user;
     document.getElementById("nickname-display").textContent =
       data.user.nickname;
 
@@ -2280,9 +2458,6 @@ window.onload = async () => {
 
     const musicList = document.getElementById("music-list");
     musicList.innerHTML = "";
-
-    // 업로드한 음악/녹음한 음악(이미 library.js와 동일한 로직 사용 가능하다고 가정)
-    // 여기서는 같은 사용자 업로드 음악을 표시
     if (!data.user.uploads || data.user.uploads.length === 0) {
       const li = document.createElement("li");
       li.textContent = "등록된 음악이 없습니다.";
@@ -2306,7 +2481,7 @@ window.onload = async () => {
   }
 };
 
-// 비밀번호 변경
+// 비밀번호 변경 동일
 document
   .getElementById("change-password-form")
   .addEventListener("submit", async (e) => {
@@ -2325,7 +2500,7 @@ document
     alert(data.message);
   });
 
-// 회원탈퇴
+// 회원탈퇴 동일
 document
   .getElementById("delete-account")
   .addEventListener("click", async () => {
@@ -2371,13 +2546,14 @@ profileImageList.addEventListener("click", async (e) => {
     const resData = await res.json();
     alert(resData.message);
     if (res.ok) {
+      // 즉시 반영
       document.getElementById("profile-picture").src = SERVER_URL + selectedImg;
       modal.style.display = "none";
     }
   }
 });
 
-// 새 프로필 이미지 파일 업로드 처리
+// 새 프로필 이미지 파일 업로드
 document
   .getElementById("upload-profile-pic-form")
   .addEventListener("submit", async (e) => {
@@ -2389,8 +2565,6 @@ document
     const formData = new FormData();
     formData.append("profilePictureFile", file);
 
-    // 프로필 업로드용 엔드포인트(파일로 업로드하는 pretend)
-    // 서버에서도 multer등으로 처리 필요(여기서는 가정)
     const res = await fetch(`${SERVER_URL}/api/users/profile-picture`, {
       method: "PUT",
       headers: {
@@ -2400,10 +2574,10 @@ document
     });
     const resData = await res.json();
     alert(resData.message);
-    if (res.ok) {
-      // 변경된 프로필 반영
+    if (res.ok && resData.fileUrl) {
+      // 서버에서 fileUrl을 반환한다고 가정하면, 즉시 반영 가능
       document.getElementById("profile-picture").src =
-        SERVER_URL + "/uploads/" + file.name;
+        SERVER_URL + resData.fileUrl;
       modal.style.display = "none";
     }
   });

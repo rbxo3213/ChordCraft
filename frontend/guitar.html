@@ -5,16 +5,19 @@
     <title>Chord Craft 메인페이지</title>
     <link rel="stylesheet" href="css/style.css" />
     <style>
-      /* 로고와 타이틀 사이 여백 증가 */
       h1 {
         margin-top: 100px;
         text-align: center;
+      }
+      /* 녹음 관련 버튼 중앙 정렬용 컨테이너 */
+      .recording-container {
+        text-align: center;
+        margin: 20px 0;
       }
     </style>
   </head>
   <body>
     <a href="guitar.html" class="logo">ChordCraft</a>
-    <!-- 로그아웃 버튼 추가 -->
     <button class="logout-button" id="logout-button">로그아웃</button>
 
     <h1>Virtual Guitar 연주</h1>
@@ -29,14 +32,18 @@
       선택된 코드: 없음
     </div>
 
-    <div id="recording-status"></div>
-    <button id="record-button">녹음 시작</button>
+    <div class="recording-container">
+      <div id="recording-status"></div>
+      <button id="record-button">녹음 시작</button>
+    </div>
 
-    <form id="sheet-upload-form">
+    <form id="sheet-upload-form" style="text-align: center">
       <input type="file" id="sheet-file" accept="image/*" />
       <button type="submit">악보 업로드</button>
     </form>
-    <img id="sheet-music" alt="악보" />
+    <div style="text-align: center">
+      <img id="sheet-music" alt="악보" />
+    </div>
 
     <div id="guitar">
       <div id="guitar-body">
@@ -74,7 +81,7 @@
     </div>
 
     <h2>악기 선택</h2>
-    <div id="instruments">
+    <div id="instruments" style="text-align: center">
       <select id="instrument-select">
         <option value="guitar">기타</option>
         <option value="piano">피아노</option>

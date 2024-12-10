@@ -159,6 +159,7 @@ th {
 }
 
 .profile-info {
+  margin-top: 120px;
   margin-bottom: 20px;
 }
 
@@ -187,6 +188,7 @@ th {
 
 /* postDetail layout */
 .post-detail-container {
+  margin-top: 120px;
   border: 2px solid #ccc;
   padding: 20px;
   background-color: #faf8ef; /* 약간 더 밝은 베이지 배경 */
