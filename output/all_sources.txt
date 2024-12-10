@@ -1,5 +1,5 @@
 파일경로: backend\app.js
-// backend/app.js ㅎㅎ
+// backend/app.js
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
@@ -101,10 +101,38 @@ exports.createPost = async (req, res) => {
 
 exports.getPosts = async (req, res) => {
   try {
+    // 모든 게시글 조회 + likeCount 필드 추가
     const posts = await Post.find({})
       .populate("author", "nickname profilePicture")
       .sort({ createdAt: -1 });
-    res.status(200).json({ posts });
+
+    const postsWithLikeCount = posts.map((post) => {
+      const postObj = post.toObject();
+      postObj.likeCount = post.likes.length;
+      return postObj;
+    });
+
+    res.status(200).json({ posts: postsWithLikeCount });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "서버 오류" });
+  }
+};
+
+exports.getMyPosts = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const posts = await Post.find({ author: userId })
+      .populate("author", "nickname profilePicture")
+      .sort({ createdAt: -1 });
+
+    const postsWithLikeCount = posts.map((post) => {
+      const postObj = post.toObject();
+      postObj.likeCount = post.likes.length;
+      return postObj;
+    });
+
+    res.status(200).json({ posts: postsWithLikeCount });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "서버 오류" });
@@ -120,7 +148,7 @@ exports.getPostById = async (req, res) => {
     if (!post) return res.status(404).json({ message: "게시글 없음" });
 
     const postObj = post.toObject();
-    postObj.likeCount = post.likes.length; // likeCount는 likes 배열 길이로 계산
+    postObj.likeCount = post.likes.length; // likeCount 추가
 
     res.status(200).json({ post: postObj });
   } catch (err) {
@@ -130,6 +158,7 @@ exports.getPostById = async (req, res) => {
 };
 
 exports.updatePost = async (req, res) => {
+  // 내용 동일
   try {
     const { id } = req.params;
     const { title, content } = req.body;
@@ -152,6 +181,7 @@ exports.updatePost = async (req, res) => {
 };
 
 exports.deletePost = async (req, res) => {
+  // 내용 동일
   try {
     const { id } = req.params;
     const post = await Post.findById(id);
@@ -160,7 +190,7 @@ exports.deletePost = async (req, res) => {
       return res.status(403).json({ message: "삭제 권한 없음" });
     }
 
-    await Post.findByIdAndDelete(id); // post.remove() 대신 findByIdAndDelete 사용
+    await Post.findByIdAndDelete(id);
     res.status(200).json({ message: "게시글 삭제 성공" });
   } catch (err) {
     console.error(err);
@@ -169,6 +199,7 @@ exports.deletePost = async (req, res) => {
 };
 
 exports.addComment = async (req, res) => {
+  // 내용 동일
   try {
     const { id } = req.params;
     const { content } = req.body;
@@ -186,6 +217,7 @@ exports.addComment = async (req, res) => {
 };
 
 exports.updateComment = async (req, res) => {
+  // 내용 동일
   try {
     const { id, commentId } = req.params;
     const { content } = req.body;
@@ -208,6 +240,7 @@ exports.updateComment = async (req, res) => {
 };
 
 exports.deleteComment = async (req, res) => {
+  // 내용 동일
   try {
     const { id, commentId } = req.params;
     const post = await Post.findById(id);
@@ -230,6 +263,7 @@ exports.deleteComment = async (req, res) => {
 };
 
 exports.toggleLike = async (req, res) => {
+  // 내용 동일
   try {
     const { id } = req.params;
     const post = await Post.findById(id);
@@ -540,7 +574,6 @@ const path = require("path");
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    // uploads 폴더 존재하는지 확인 후 없으면 만들어주세요.
     cb(null, path.join(__dirname, "../uploads/"));
   },
   filename: (req, file, cb) => {
@@ -553,6 +586,8 @@ router
   .route("/")
   .get(postController.getPosts)
   .post(authMiddleware, upload.single("music"), postController.createPost);
+
+router.get("/mine", authMiddleware, postController.getMyPosts); // 추가된 라우트
 
 router
   .route("/:id")
@@ -662,9 +697,9 @@ module.exports = router;
     </style>
   </head>
   <body>
-    <a href="guitar.html" class="logo">WebGuitar</a>
+    <a href="guitar.html" class="logo">ChordCraft</a>
     <div class="board-title">
-      <h1>자유게시판</h1>
+      <h1>게시판</h1>
     </div>
 
     <div class="new-post-btn">
@@ -720,7 +755,7 @@ module.exports = router;
     </style>
   </head>
   <body>
-    <a href="guitar.html" class="logo">WebGuitar</a>
+    <a href="guitar.html" class="logo">ChordCraft</a>
     <h1 style="text-align: center">글 수정</h1>
     <div class="form-container">
       <form id="edit-post-form">
@@ -752,7 +787,7 @@ module.exports = router;
     <link rel="stylesheet" href="css/style.css" />
   </head>
   <body>
-    <a href="guitar.html" class="logo">WebGuitar</a>
+    <a href="guitar.html" class="logo">ChordCraft</a>
     <h1>Virtual Guitar 연주</h1>
 
     <!-- 프로필, 게시판 이동 버튼 추가 -->
@@ -915,12 +950,97 @@ module.exports = router;
     <link rel="stylesheet" href="css/style.css" />
   </head>
   <body>
-    <a href="guitar.html" class="logo">WebGuitar</a>
+    <a href="guitar.html" class="logo">ChordCraft</a>
     <h1 style="text-align: center">내 라이브러리</h1>
     <div id="music-list-container" style="width: 80%; margin: 20px auto">
       <ul id="music-list"></ul>
     </div>
     <script src="js/library.js"></script>
+  </body>
+</html>
+
+
+파일경로: frontend\myPosts.html
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>내 게시판</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+      table {
+        width: 80%;
+        margin: 20px auto;
+        border-collapse: collapse;
+        table-layout: fixed;
+      }
+      colgroup col:nth-child(2) {
+        width: 50%;
+      }
+      th,
+      td {
+        border: 1px solid #ccc;
+        padding: 10px;
+        text-align: center;
+        word-wrap: break-word;
+      }
+      th {
+        background-color: #f2f2f2;
+      }
+      .board-title {
+        text-align: center;
+        margin-top: 40px;
+      }
+      .board-title h1 {
+        margin-bottom: 20px;
+      }
+      .logo {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        font-weight: bold;
+        font-size: 24px;
+        text-decoration: none;
+        color: #333;
+      }
+      .new-post-btn {
+        width: 80%;
+        margin: 20px auto;
+        text-align: right;
+      }
+    </style>
+  </head>
+  <body>
+    <a href="guitar.html" class="logo">ChordCraft</a>
+    <div class="board-title">
+      <h1>내가 쓴 글</h1>
+    </div>
+
+    <div class="new-post-btn">
+      <a href="newPost.html"><button>글쓰기</button></a>
+    </div>
+
+    <table>
+      <colgroup>
+        <col style="width: 50px" />
+        <col />
+        <col style="width: 100px" />
+        <col style="width: 150px" />
+        <col style="width: 50px" />
+      </colgroup>
+      <thead>
+        <tr>
+          <th>No</th>
+          <th>제목</th>
+          <th>글쓴이</th>
+          <th>작성시간</th>
+          <th>좋아요</th>
+        </tr>
+      </thead>
+      <tbody id="my-board-list"></tbody>
+    </table>
+
+    <script src="js/myPosts.js"></script>
   </body>
 </html>
 
@@ -948,7 +1068,7 @@ module.exports = router;
     </style>
   </head>
   <body>
-    <a href="guitar.html" class="logo">WebGuitar</a>
+    <a href="guitar.html" class="logo">ChordCraft</a>
     <h1 style="text-align: center">새 게시글 작성</h1>
     <div class="form-container">
       <form id="new-post-form">
@@ -1020,7 +1140,7 @@ module.exports = router;
     </style>
   </head>
   <body>
-    <a href="guitar.html" class="logo">WebGuitar</a>
+    <a href="guitar.html" class="logo">ChordCraft</a>
     <div class="post-detail-container">
       <!-- 제목 -->
       <h1 id="post-title"></h1>
@@ -1073,6 +1193,7 @@ module.exports = router;
 
 
 파일경로: frontend\profile.html
+<!-- frontend/profile.html -->
 <!DOCTYPE html>
 <html lang="ko">
   <head>
@@ -1099,10 +1220,9 @@ module.exports = router;
     </style>
   </head>
   <body>
-    <a href="guitar.html" class="logo">WebGuitar</a>
+    <a href="guitar.html" class="logo">ChordCraft</a>
     <h1>프로필 페이지</h1>
     <div class="profile-info">
-      <!-- 기본 프로필 이미지 경로를 절대경로로 지정 -->
       <img
         id="profile-picture"
         src="/assets/images/profiles/default-profile.png"
@@ -1111,14 +1231,14 @@ module.exports = router;
         height="100"
       />
       <p>닉네임: <span id="nickname-display"></span></p>
-      <a href="board.html">내 게시판</a>
+      <!-- "내 게시판" 링크를 myPosts.html로 변경 -->
+      <a href="myPosts.html">내 게시판</a>
     </div>
     <button id="change-profile-pic">프로필 사진 변경</button>
 
     <div class="profile-image-modal" id="profile-image-modal">
       <h4>프로필 이미지 선택</h4>
       <div id="profile-image-list">
-        <!-- 절대 경로로 지정, data-img도 절대 경로 -->
         <img
           src="/assets/images/profiles/img1.png"
           data-img="/assets/images/profiles/img1.png"
@@ -1170,7 +1290,7 @@ module.exports = router;
     <link rel="stylesheet" href="css/style.css" />
   </head>
   <body>
-    <a href="guitar.html" class="logo">WebGuitar</a>
+    <a href="guitar.html" class="logo">ChordCraft</a>
     <h1>음악 업로드</h1>
     <form id="upload-form">
       <input type="text" id="music-title" placeholder="음악 제목" required />
@@ -1231,6 +1351,7 @@ document
 
 
 파일경로: frontend\js\board.js
+// frontend/js/board.js
 const SERVER_URL = "http://localhost:5000";
 const token = localStorage.getItem("token");
 
@@ -1263,8 +1384,9 @@ async function loadPosts() {
     createdAtTd.textContent = date.toLocaleString();
     tr.appendChild(createdAtTd);
 
+    // 좋아요 수 반영
     const likesTd = document.createElement("td");
-    likesTd.textContent = 0; // likes 필드 미구현, 필요시 확장
+    likesTd.textContent = post.likeCount || 0;
     tr.appendChild(likesTd);
 
     boardList.appendChild(tr);
@@ -1833,6 +1955,59 @@ async function loadUserMusic() {
 
 window.onload = () => {
   loadUserMusic();
+};
+
+
+파일경로: frontend\js\myPosts.js
+const SERVER_URL = "http://localhost:5000";
+const token = localStorage.getItem("token");
+
+if (!token) {
+  alert("로그인이 필요합니다.");
+  window.location.href = "index.html";
+}
+
+async function loadMyPosts() {
+  const response = await fetch(`${SERVER_URL}/api/posts/mine`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await response.json();
+  const myBoardList = document.getElementById("my-board-list");
+  myBoardList.innerHTML = "";
+
+  data.posts.forEach((post, index) => {
+    const tr = document.createElement("tr");
+
+    const noTd = document.createElement("td");
+    noTd.textContent = data.posts.length - index;
+    tr.appendChild(noTd);
+
+    const titleTd = document.createElement("td");
+    const titleLink = document.createElement("a");
+    titleLink.href = `postDetail.html?postId=${post._id}`;
+    titleLink.textContent = post.title || "제목 없음";
+    titleTd.appendChild(titleLink);
+    tr.appendChild(titleTd);
+
+    const authorTd = document.createElement("td");
+    authorTd.textContent = post.author ? post.author.nickname : "알 수 없음";
+    tr.appendChild(authorTd);
+
+    const createdAtTd = document.createElement("td");
+    const date = new Date(post.createdAt);
+    createdAtTd.textContent = date.toLocaleString();
+    tr.appendChild(createdAtTd);
+
+    const likesTd = document.createElement("td");
+    likesTd.textContent = post.likeCount || 0;
+    tr.appendChild(likesTd);
+
+    myBoardList.appendChild(tr);
+  });
+}
+
+window.onload = () => {
+  loadMyPosts();
 };
 
 

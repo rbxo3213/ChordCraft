@@ -1,7 +1,7 @@
 import os
 
 # 처리할 확장자 목록
-TARGET_EXT = ['.js', '.html']
+TARGET_EXT = ['.js', '.html', 'css']
 
 # 무시할 디렉토리 (node_modules 등)
 IGNORE_DIRS = ['node_modules']
