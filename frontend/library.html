@@ -4,13 +4,83 @@
     <meta charset="UTF-8" />
     <title>내 라이브러리</title>
     <link rel="stylesheet" href="css/style.css" />
+    <style>
+      .tabs {
+        display: flex;
+        justify-content: center;
+        margin: 20px;
+      }
+      .tabs button {
+        margin: 0 10px;
+        padding: 8px;
+      }
+      .tab-content {
+        width: 80%;
+        margin: 20px auto;
+      }
+      .hidden {
+        display: none;
+      }
+
+      /* 보관함 레이아웃 박스 */
+      .box-container {
+        border: 1px solid #ccc;
+        background: #faf8ef;
+        padding: 20px;
+        border-radius: 8px;
+      }
+      .box-container h2 {
+        margin-top: 0;
+      }
+      ul {
+        list-style-type: none;
+        padding: 0;
+      }
+      ul li {
+        margin-bottom: 10px;
+        border: 1px solid #ddd;
+        padding: 5px;
+        border-radius: 4px;
+      }
+      ul li button {
+        margin-left: 10px;
+      }
+    </style>
   </head>
   <body>
     <a href="guitar.html" class="logo">ChordCraft</a>
     <h1 style="text-align: center">내 라이브러리</h1>
-    <div id="music-list-container" style="width: 80%; margin: 20px auto">
-      <ul id="music-list"></ul>
+
+    <div class="tabs">
+      <button id="music-tab">음악 보관함</button>
+      <button id="sheet-tab">악보 보관함</button>
     </div>
+
+    <div id="music-content" class="tab-content">
+      <div class="box-container">
+        <h2>음악 목록</h2>
+        <ul id="music-list"></ul>
+      </div>
+    </div>
+
+    <div id="sheet-content" class="tab-content hidden">
+      <div class="box-container">
+        <h2>악보 목록</h2>
+        <ul id="sheet-list"></ul>
+        <h3>악보 업로드</h3>
+        <form id="sheet-upload-form">
+          <input
+            type="text"
+            id="sheet-title"
+            placeholder="악보 제목"
+            required
+          />
+          <input type="file" id="sheet-file" accept="image/*" required />
+          <button type="submit">업로드</button>
+        </form>
+      </div>
+    </div>
+
     <script src="js/library.js"></script>
   </body>
 </html>

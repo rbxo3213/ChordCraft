@@ -15,17 +15,20 @@ app.use(cors(corsOptions));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// 정적 파일 제공
-app.use(express.static(path.join(__dirname, "../frontend")));
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-
 const userRoutes = require("./routes/users");
 const musicRoutes = require("./routes/music");
 const postsRoutes = require("./routes/posts");
+const sheetsRoutes = require("./routes/sheets");
 
+// API 라우트를 먼저 선언
 app.use("/api/users", userRoutes);
 app.use("/api/music", musicRoutes);
 app.use("/api/posts", postsRoutes);
+app.use("/api/sheets", sheetsRoutes);
+
+// 그 뒤 정적 파일 제공
+app.use(express.static(path.join(__dirname, "../frontend")));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 mongoose
   .connect(process.env.MONGODB_URI)

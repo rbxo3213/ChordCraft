@@ -27,19 +27,77 @@
         padding: 8px;
         font-size: 14px;
       }
-      .edit-post-container input[type="file"] {
-        margin-bottom: 10px;
+      .edit-post-container button {
+        background: #f3e5ab;
+        border: 1px solid #ccc;
+        padding: 8px 14px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        margin: 5px;
+        align-self: flex-end;
       }
-      .edit-post-container .current-file {
+      .edit-post-container button:hover {
+        background-color: #ecd898;
+      }
+
+      .current-file {
         margin-bottom: 10px;
         font-size: 14px;
         color: #333;
       }
-      .edit-post-container .file-actions {
+      .file-actions {
         margin-bottom: 10px;
       }
-      .edit-post-container button {
-        align-self: flex-end;
+
+      .music-modal {
+        display: none;
+        position: fixed;
+        top: 20%;
+        left: 30%;
+        width: 40%;
+        background: #faf8ef;
+        border: 1px solid #ccc;
+        padding: 20px;
+        border-radius: 8px;
+        z-index: 999;
+      }
+      .music-modal h3 {
+        text-align: center;
+        margin-bottom: 10px;
+      }
+      .music-modal .switch-buttons {
+        text-align: center;
+        margin-bottom: 10px;
+      }
+      .music-modal .switch-buttons button {
+        margin: 0 5px;
+      }
+      .music-modal ul {
+        list-style: none;
+        padding: 0;
+        max-height: 200px;
+        overflow: auto;
+        border: 1px solid #ddd;
+        padding: 5px;
+        border-radius: 4px;
+      }
+      .music-modal li {
+        margin-bottom: 5px;
+        cursor: pointer;
+        padding: 5px;
+        border-radius: 4px;
+      }
+      .music-modal li:hover {
+        background: #eee;
+      }
+      .music-modal .selected {
+        background: #cfe3d4;
+      }
+      .music-modal #selected-item {
+        text-align: center;
+        margin-top: 10px;
+        font-weight: bold;
       }
     </style>
   </head>
@@ -56,16 +114,30 @@
         /><br />
         <textarea id="edit-post-content" placeholder="내용" required></textarea
         ><br />
+        <!-- 라이브러리 업로드 버튼 -->
+        <button type="button" id="library-music-btn">업로드</button>
         <div class="current-file" id="current-file-info" style="display: none">
           현재 음악 파일: <span id="current-file-name"></span>
         </div>
         <div class="file-actions" id="file-actions" style="display: none">
           <button type="button" id="delete-file-button">파일 삭제</button>
         </div>
-        <input type="file" id="edit-post-music-file" accept="audio/*" /><br />
+
         <button type="submit">수정</button>
       </form>
     </div>
+
+    <div class="music-modal" id="edit-music-modal">
+      <button id="edit-music-modal-close">닫기</button>
+      <h3>내 라이브러리</h3>
+      <div class="switch-buttons">
+        <button id="edit-library-music-switch">내 음악</button>
+        <button id="edit-library-sheet-switch">내 악보</button>
+      </div>
+      <ul id="edit-modal-library-list"></ul>
+      <div id="edit-selected-item"></div>
+    </div>
+
     <script src="js/editPost.js"></script>
   </body>
 </html>

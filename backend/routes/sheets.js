@@ -1,14 +1,14 @@
-// backend/routes/music.js
+// backend/routes/sheets.js
 const express = require("express");
 const router = express.Router();
-const musicController = require("../controllers/musicController");
+const sheetController = require("../controllers/sheetController");
 const authMiddleware = require("../middlewares/authMiddleware");
 const multer = require("multer");
 const path = require("path");
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, "../uploads/"));
+    cb(null, path.join(__dirname, "../uploads/sheets/"));
   },
   filename: (req, file, cb) => {
     cb(null, Date.now() + path.extname(file.originalname));
@@ -16,18 +16,18 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// 음악 파일 업로드(라이브러리 저장)
+// 악보 업로드
 router.post(
   "/upload",
   authMiddleware,
-  upload.single("music"),
-  musicController.uploadMusic
+  upload.single("sheet"),
+  sheetController.uploadSheet
 );
 
-// 사용자의 음악 목록 조회
-router.get("/user", authMiddleware, musicController.getUserMusic);
+// 사용자의 악보 목록 조회
+router.get("/user", authMiddleware, sheetController.getUserSheets);
 
-// 음악 삭제 라우트 추가
-router.delete("/:id", authMiddleware, musicController.deleteMusic);
+// 악보 삭제 추가
+router.delete("/:id", authMiddleware, sheetController.deleteSheet);
 
 module.exports = router;

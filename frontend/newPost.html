@@ -1,3 +1,4 @@
+<!-- frontend/newPost.html -->
 <!DOCTYPE html>
 <html lang="ko">
   <head>
@@ -7,22 +8,91 @@
     <style>
       .form-container {
         width: 80%;
-        margin: 20px auto;
+        margin: 80px auto;
+        border: 2px solid #ccc;
+        background: #faf8ef;
+        padding: 20px;
+        border-radius: 8px;
+      }
+      .form-container h1 {
+        text-align: center;
+        margin-bottom: 20px;
       }
       .form-container input[type="text"],
       .form-container textarea {
         width: 100%;
         margin-bottom: 10px;
+        padding: 8px;
+        font-size: 14px;
       }
       .form-container button {
-        float: right;
+        background: #f3e5ab;
+        border: 1px solid #ccc;
+        padding: 8px 14px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        margin: 5px;
+      }
+      .form-container button:hover {
+        background-color: #ecd898;
+      }
+
+      .music-modal {
+        display: none;
+        position: fixed;
+        top: 20%;
+        left: 30%;
+        width: 40%;
+        background: #faf8ef;
+        border: 1px solid #ccc;
+        padding: 20px;
+        border-radius: 8px;
+        z-index: 999;
+      }
+      .music-modal h3 {
+        text-align: center;
+        margin-bottom: 10px;
+      }
+      .music-modal .switch-buttons {
+        text-align: center;
+        margin-bottom: 10px;
+      }
+      .music-modal .switch-buttons button {
+        margin: 0 5px;
+      }
+      .music-modal ul {
+        list-style: none;
+        padding: 0;
+        max-height: 200px;
+        overflow: auto;
+        border: 1px solid #ddd;
+        padding: 5px;
+        border-radius: 4px;
+      }
+      .music-modal li {
+        margin-bottom: 5px;
+        cursor: pointer;
+        padding: 5px;
+        border-radius: 4px;
+      }
+      .music-modal li:hover {
+        background: #eee;
+      }
+      .music-modal .selected {
+        background: #cfe3d4;
+      }
+      .music-modal #selected-item {
+        text-align: center;
+        margin-top: 10px;
+        font-weight: bold;
       }
     </style>
   </head>
   <body>
     <a href="guitar.html" class="logo">ChordCraft</a>
-    <h1 style="text-align: center">새 게시글 작성</h1>
     <div class="form-container">
+      <h1>새 게시글 작성</h1>
       <form id="new-post-form">
         <input
           type="text"
@@ -32,10 +102,29 @@
         /><br />
         <textarea id="new-post-content" placeholder="내용" required></textarea
         ><br />
-        <input type="file" id="new-post-music-file" accept="audio/*" /><br />
+        <button type="button" id="attach-music-btn">업로드</button>
+        <!-- 파일 input은 숨김, libraryMusicId로 처리 -->
+        <input
+          type="file"
+          id="new-post-music-file"
+          accept="audio/*"
+          style="display: none"
+        /><br />
         <button type="submit">작성</button>
       </form>
     </div>
+
+    <div class="music-modal" id="music-modal">
+      <button id="music-modal-close">닫기</button>
+      <h3>내 라이브러리</h3>
+      <div class="switch-buttons">
+        <button id="library-music-switch">내 음악</button>
+        <button id="library-sheet-switch">내 악보</button>
+      </div>
+      <ul id="modal-library-list"></ul>
+      <div id="selected-item"></div>
+    </div>
+
     <script src="js/newPost.js"></script>
   </body>
 </html>

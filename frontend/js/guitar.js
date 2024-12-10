@@ -1,3 +1,4 @@
+// frontend/js/guitar.js
 import { chordData } from "./chords.js";
 import { stringFrequencies } from "./frequencies.js";
 
@@ -9,7 +10,6 @@ if (!token) {
   window.location.href = "index.html";
 }
 
-// 로그아웃 버튼 기능 추가
 document.getElementById("logout-button").addEventListener("click", () => {
   localStorage.removeItem("token");
   localStorage.removeItem("userId");
@@ -66,7 +66,7 @@ document
 let currentChord = null;
 let currentChordType = null;
 let isRecording = false;
-let mediaRecorder;
+let mediaRecorder = null;
 let recordedChunks = [];
 let audioContext = null;
 let dest = null;
@@ -80,7 +80,11 @@ document.addEventListener(
       audioContext = new (window.AudioContext || window.webkitAudioContext)();
     }
     if (audioContext.state === "suspended") {
-      await audioContext.resume();
+      try {
+        await audioContext.resume();
+      } catch (err) {
+        console.error("AudioContext resume error", err);
+      }
     }
   },
   { once: true }
@@ -209,7 +213,18 @@ function animateString(stringNumber) {
 }
 
 // 녹음
-document.getElementById("record-button").addEventListener("click", () => {
+document.getElementById("record-button").addEventListener("click", async () => {
+  if (!audioContext) {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioContext.state === "suspended") {
+    try {
+      await audioContext.resume();
+    } catch (err) {
+      console.error("AudioContext resume error", err);
+    }
+  }
+
   isRecording = !isRecording;
   const recordButton = document.getElementById("record-button");
   recordButton.textContent = isRecording ? "녹음 중지" : "녹음 시작";
@@ -222,7 +237,10 @@ document.getElementById("record-button").addEventListener("click", () => {
 });
 
 async function startRecording() {
-  if (!audioContext || audioContext.state !== "running") return;
+  if (!audioContext || audioContext.state !== "running") {
+    console.warn("AudioContext not running, cannot start recording");
+    return;
+  }
 
   recordedChunks = [];
   dest = audioContext.createMediaStreamDestination();
@@ -233,57 +251,125 @@ async function startRecording() {
     }
   };
   mediaRecorder.start();
+  console.log("Recording started");
 }
 
 function stopRecording() {
-  if (!mediaRecorder) return;
+  if (!mediaRecorder || mediaRecorder.state !== "recording") {
+    console.warn("No active recording to stop");
+    return;
+  }
   mediaRecorder.stop();
   mediaRecorder.onstop = () => {
-    const blob = new Blob(recordedChunks, { type: "audio/webm" });
-
-    const recordingName = prompt(
-      "녹음한 파일의 이름을 입력하세요(확장자 제외)",
-      "myRecording"
-    );
-    const filename = recordingName ? recordingName + ".webm" : "recorded.webm";
-
-    const url = URL.createObjectURL(blob);
-
-    const playbackButton = document.createElement("button");
-    playbackButton.textContent = "녹음 재생";
-    playbackButton.onclick = () => {
-      const audio = new Audio(url);
-      audio.play();
-    };
-
-    const downloadButton = document.createElement("a");
-    downloadButton.href = url;
-    downloadButton.download = filename;
-    downloadButton.textContent = "다운로드";
-
-    const recordingStatus = document.getElementById("recording-status");
-    recordingStatus.textContent = "";
-    recordingStatus.appendChild(playbackButton);
-    recordingStatus.appendChild(document.createTextNode(" "));
-    recordingStatus.appendChild(downloadButton);
+    console.log("Recording stopped");
+    // 녹음 종료 후 음악 이름 입력 모달 표시
+    document.getElementById("record-name-modal").style.display = "block";
   };
 }
 
-// 악보 업로드
-document.getElementById("sheet-upload-form").addEventListener("submit", (e) => {
-  e.preventDefault();
-  const fileInput = document.getElementById("sheet-file");
-  const file = fileInput.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (event) => {
-    const img = document.getElementById("sheet-music");
-    img.src = event.target.result;
-  };
-  reader.readAsDataURL(file);
+// 모달 스타일 및 레이아웃 개선
+const modals = document.querySelectorAll(".modal");
+modals.forEach((modal) => {
+  modal.style.background = "#faf8ef";
+  modal.style.borderRadius = "8px";
 });
 
-// 악기 선택 알림
-document.getElementById("instrument-select").addEventListener("change", (e) => {
-  alert(e.target.value + "는 아직 구현되지 않았습니다.");
-});
+// 악보 보관함 열기
+document
+  .getElementById("open-sheet-upload")
+  .addEventListener("click", async () => {
+    await loadSheetLibrary();
+    document.getElementById("sheet-library-modal").style.display = "block";
+  });
+
+document
+  .getElementById("close-sheet-library-modal")
+  .addEventListener("click", () => {
+    document.getElementById("sheet-library-modal").style.display = "none";
+  });
+
+// 악보 업로드
+document
+  .getElementById("upload-sheet-btn")
+  .addEventListener("click", async () => {
+    const title = document.getElementById("sheet-upload-title").value.trim();
+    const file = document.getElementById("sheet-upload-input").files[0];
+    if (!file) {
+      alert("악보 파일을 선택해주세요.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("title", title);
+    formData.append("sheet", file);
+
+    const res = await fetch(`${SERVER_URL}/api/sheets/upload`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+    const resData = await res.json();
+    if (res.ok) {
+      alert("악보 업로드 성공");
+      document.getElementById("sheet-upload-title").value = "";
+      document.getElementById("sheet-upload-input").value = "";
+      await loadSheetLibrary();
+    } else {
+      alert("악보 업로드 실패: " + resData.error);
+    }
+  });
+
+async function loadSheetLibrary() {
+  const res = await fetch(`${SERVER_URL}/api/sheets/user`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  const sheetListDiv = document.getElementById("sheet-library-list");
+  sheetListDiv.innerHTML = "";
+  if (res.ok && data.sheets && data.sheets.length > 0) {
+    data.sheets.forEach((sheet) => {
+      const sheetItem = document.createElement("div");
+      sheetItem.style.border = "1px solid #ccc";
+      sheetItem.style.padding = "5px";
+      sheetItem.style.marginBottom = "5px";
+
+      const img = document.createElement("img");
+      img.src = SERVER_URL + sheet.fileUrl;
+      img.width = 50;
+      img.height = 50;
+      img.style.cursor = "pointer";
+      img.style.verticalAlign = "middle";
+      img.addEventListener("click", () => {
+        const sheetMusic = document.getElementById("sheet-music");
+        sheetMusic.src = SERVER_URL + sheet.fileUrl;
+        document.getElementById("sheet-library-modal").style.display = "none";
+      });
+      sheetItem.appendChild(img);
+      sheetItem.appendChild(document.createTextNode(" " + sheet.title + " "));
+
+      // 삭제 버튼
+      const deleteBtn = document.createElement("button");
+      deleteBtn.textContent = "삭제";
+      deleteBtn.style.marginLeft = "10px";
+      deleteBtn.addEventListener("click", async () => {
+        if (!confirm("정말 이 악보를 삭제하시겠습니까?")) return;
+        const delRes = await fetch(`${SERVER_URL}/api/sheets/${sheet._id}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const delData = await delRes.json();
+        if (delRes.ok) {
+          alert("악보 삭제 성공");
+          await loadSheetLibrary();
+        } else {
+          alert("악보 삭제 실패: " + delData.error);
+        }
+      });
+      sheetItem.appendChild(deleteBtn);
+
+      sheetListDiv.appendChild(sheetItem);
+    });
+  } else {
+    sheetListDiv.textContent = "등록된 악보가 없습니다.";
+  }
+}

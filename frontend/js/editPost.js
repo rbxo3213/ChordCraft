@@ -9,6 +9,9 @@ if (!token) {
 
 let currentPostId = null;
 let currentFileUrl = null;
+let selectedMusicFile = null;
+let selectedSheetFile = null;
+let currentEditLibraryMode = "music";
 
 async function loadPostData() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -43,7 +46,6 @@ async function loadPostData() {
 }
 
 document.getElementById("delete-file-button").addEventListener("click", () => {
-  // 파일 삭제: currentFileUrl을 null 처리하여 서버에 수정 요청 시 파일 없는 상태로 업데이트
   currentFileUrl = null;
   document.getElementById("current-file-info").style.display = "none";
   document.getElementById("file-actions").style.display = "none";
@@ -55,21 +57,19 @@ document
     e.preventDefault();
     const title = document.getElementById("edit-post-title").value;
     const content = document.getElementById("edit-post-content").value;
-    const file = document.getElementById("edit-post-music-file").files[0];
 
     const formData = new FormData();
     formData.append("title", title);
     formData.append("content", content);
 
-    // 파일 삭제 버튼을 눌렀을 경우 currentFileUrl = null
-    // 서버에서는 이를 받아 기존 파일 삭제 처리 필요
-    // 파일이 없고 currentFileUrl도 없으면 기존 파일 제거
-    // 파일이 새로 업로드되면 그 파일로 교체
-    if (file) {
-      formData.append("music", file);
-    } else if (currentFileUrl === null) {
-      // 파일 없음 상태로 업데이트 (music 필드 null 처리)
+    if (currentFileUrl === null && !selectedMusicFile && !selectedSheetFile) {
       formData.append("removeMusic", "true");
+    } else if (selectedMusicFile) {
+      formData.append("libraryMusicId", selectedMusicFile._id);
+    } else if (selectedSheetFile) {
+      // 악보 첨부 로직
+      const sheetUrl = selectedSheetFile.fileUrl;
+      formData.append("content", content + `\n[악보: ${sheetUrl}]`);
     }
 
     const response = await fetch(`${SERVER_URL}/api/posts/${currentPostId}`, {
@@ -92,3 +92,90 @@ document
 window.onload = () => {
   loadPostData();
 };
+
+document.getElementById("library-music-btn").addEventListener("click", () => {
+  const modal = document.getElementById("edit-music-modal");
+  modal.style.display = "block";
+  loadEditLibraryItems();
+});
+
+document
+  .getElementById("edit-music-modal-close")
+  .addEventListener("click", () => {
+    document.getElementById("edit-music-modal").style.display = "none";
+  });
+
+document
+  .getElementById("edit-library-music-switch")
+  .addEventListener("click", () => {
+    currentEditLibraryMode = "music";
+    loadEditLibraryItems();
+  });
+
+document
+  .getElementById("edit-library-sheet-switch")
+  .addEventListener("click", () => {
+    currentEditLibraryMode = "sheet";
+    loadEditLibraryItems();
+  });
+
+async function loadEditLibraryItems() {
+  const list = document.getElementById("edit-modal-library-list");
+  list.innerHTML = "";
+
+  let url;
+  if (currentEditLibraryMode === "music") {
+    url = `${SERVER_URL}/api/music/user`;
+  } else {
+    url = `${SERVER_URL}/api/sheets/user`;
+  }
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+
+  let items;
+  if (currentEditLibraryMode === "music") {
+    items = data.musicList || [];
+  } else {
+    items = data.sheets || [];
+  }
+
+  selectedMusicFile = null;
+  selectedSheetFile = null;
+  document.getElementById("edit-selected-item").textContent = "";
+
+  if (items.length === 0) {
+    list.textContent = "등록된 항목이 없습니다.";
+    return;
+  }
+
+  items.forEach((item) => {
+    const li = document.createElement("li");
+    li.textContent = item.title;
+    li.addEventListener("click", () => {
+      list
+        .querySelectorAll("li")
+        .forEach((li) => li.classList.remove("selected"));
+      li.classList.add("selected");
+
+      if (currentEditLibraryMode === "music") {
+        selectedMusicFile = item;
+        selectedSheetFile = null;
+      } else {
+        selectedSheetFile = item;
+        selectedMusicFile = null;
+      }
+      document.getElementById(
+        "edit-selected-item"
+      ).textContent = `선택된 항목: ${item.title}`;
+
+      // 기존 파일 정보 숨기기
+      currentFileUrl = null;
+      document.getElementById("current-file-info").style.display = "none";
+      document.getElementById("file-actions").style.display = "none";
+    });
+    list.appendChild(li);
+  });
+}

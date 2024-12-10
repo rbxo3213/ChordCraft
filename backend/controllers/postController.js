@@ -1,13 +1,22 @@
 // backend/controllers/postController.js
 const Post = require("../models/Post");
+const Music = require("../models/Music"); // 라이브러리 음악 조회를 위해 추가
 const fs = require("fs");
 const path = require("path");
 
 exports.createPost = async (req, res) => {
   try {
-    const { title, content } = req.body;
+    const { title, content, libraryMusicId } = req.body;
     let musicFileUrl = null;
-    if (req.file) {
+
+    if (libraryMusicId && !req.file) {
+      // 라이브러리에서 음악 선택한 경우
+      const music = await Music.findById(libraryMusicId);
+      if (!music) {
+        return res.status(400).json({ message: "선택한 라이브러리 음악 없음" });
+      }
+      musicFileUrl = music.fileUrl; // 라이브러리 음악의 fileUrl 사용
+    } else if (req.file) {
       musicFileUrl = `/uploads/${req.file.filename}`;
     }
 
@@ -85,7 +94,7 @@ exports.getPostById = async (req, res) => {
 exports.updatePost = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, content, removeMusic } = req.body;
+    const { title, content, removeMusic, libraryMusicId } = req.body;
 
     const post = await Post.findById(id);
     if (!post) return res.status(404).json({ message: "게시글 없음" });
@@ -96,10 +105,6 @@ exports.updatePost = async (req, res) => {
     post.title = title;
     post.content = content;
 
-    // 음악 파일 처리 로직
-    // 실제 프로젝트 구조에 따라 파일 경로 조정 필요
-    // 여기서는 uploads 폴더가 backend 하위라고 가정
-    // post.musicFileUrl가 "/uploads/filename" 형태이므로 basename 추출
     const uploadsPath = path.join(__dirname, "../uploads");
 
     if (removeMusic === "true") {
@@ -122,8 +127,22 @@ exports.updatePost = async (req, res) => {
         }
       }
       post.musicFileUrl = `/uploads/${req.file.filename}`;
+    } else if (libraryMusicId) {
+      // 라이브러리 음악 선택
+      if (post.musicFileUrl) {
+        // 기존 파일 삭제
+        const oldFilename = path.basename(post.musicFileUrl);
+        const oldFilePath = path.join(uploadsPath, oldFilename);
+        if (fs.existsSync(oldFilePath)) {
+          fs.unlinkSync(oldFilePath);
+        }
+      }
+      const music = await Music.findById(libraryMusicId);
+      if (!music) {
+        return res.status(400).json({ message: "선택한 라이브러리 음악 없음" });
+      }
+      post.musicFileUrl = music.fileUrl;
     }
-    // 파일 변경 없고 removeMusic 없으면 기존 유지
 
     await post.save();
     res.status(200).json({ message: "게시글 수정 성공", post });
@@ -142,7 +161,6 @@ exports.deletePost = async (req, res) => {
       return res.status(403).json({ message: "삭제 권한 없음" });
     }
 
-    // 삭제 시 음악파일도 제거
     if (post.musicFileUrl) {
       const uploadsPath = path.join(__dirname, "../uploads");
       const oldFilename = path.basename(post.musicFileUrl);
@@ -230,10 +248,8 @@ exports.toggleLike = async (req, res) => {
     const userId = req.userId;
     const index = post.likes.findIndex((uid) => uid.toString() === userId);
     if (index === -1) {
-      // 좋아요 추가
       post.likes.push(userId);
     } else {
-      // 좋아요 취소
       post.likes.splice(index, 1);
     }
 
