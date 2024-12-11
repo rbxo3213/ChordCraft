@@ -11,6 +11,7 @@ let selectedMusicFile = null;
 let selectedSheetFile = null;
 let currentLibraryMode = "music"; // "music" or "sheet"
 
+// "첨부하기" 버튼 클릭 시 모달 열기
 document
   .getElementById("attach-music-btn")
   .addEventListener("click", async () => {
@@ -19,10 +20,13 @@ document
     loadLibraryItems();
   });
 
+// 모달 닫기 버튼
 document.getElementById("music-modal-close").addEventListener("click", () => {
   document.getElementById("music-modal").style.display = "none";
+  resetLibrarySelection();
 });
 
+// 라이브러리 모드 전환 버튼들
 document
   .getElementById("library-music-switch")
   .addEventListener("click", () => {
@@ -36,6 +40,7 @@ document
     loadLibraryItems();
   });
 
+// 라이브러리 항목 로드
 async function loadLibraryItems() {
   const list = document.getElementById("modal-library-list");
   list.innerHTML = "";
@@ -47,90 +52,128 @@ async function loadLibraryItems() {
     url = `${SERVER_URL}/api/sheets/user`;
   }
 
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  const data = await res.json();
-
-  let items;
-  if (currentLibraryMode === "music") {
-    items = data.musicList || [];
-  } else {
-    items = data.sheets || [];
-  }
-
-  if (items.length === 0) {
-    list.textContent = "등록된 항목이 없습니다.";
-    document.getElementById("selected-item").textContent = "";
-    return;
-  }
-
-  // 선택된 항목 초기화
-  selectedMusicFile = null;
-  selectedSheetFile = null;
-  document.getElementById("selected-item").textContent = "";
-
-  items.forEach((item) => {
-    const li = document.createElement("li");
-    li.textContent = item.title;
-    li.addEventListener("click", () => {
-      // 선택 효과
-      list
-        .querySelectorAll("li")
-        .forEach((li) => li.classList.remove("selected"));
-      li.classList.add("selected");
-
-      if (currentLibraryMode === "music") {
-        selectedMusicFile = item;
-        selectedSheetFile = null;
-      } else {
-        selectedSheetFile = item;
-        selectedMusicFile = null;
-      }
-      document.getElementById(
-        "selected-item"
-      ).textContent = `선택된 항목: ${item.title}`;
+  try {
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
     });
-    list.appendChild(li);
-  });
+    const data = await res.json();
+
+    let items;
+    if (currentLibraryMode === "music") {
+      items = data.musicList || [];
+    } else {
+      items = data.sheets || [];
+    }
+
+    if (items.length === 0) {
+      list.textContent = "등록된 항목이 없습니다.";
+      document.getElementById("selected-item").textContent = "";
+      document.getElementById("attach-selected-item").disabled = true;
+      return;
+    }
+
+    // 선택된 항목 초기화
+    selectedMusicFile = null;
+    selectedSheetFile = null;
+    document.getElementById("selected-item").textContent = "";
+    document.getElementById("attach-selected-item").disabled = true;
+
+    items.forEach((item) => {
+      const li = document.createElement("li");
+      li.textContent = item.title;
+      li.addEventListener("click", () => {
+        // 선택 효과
+        list
+          .querySelectorAll("li")
+          .forEach((li) => li.classList.remove("selected"));
+        li.classList.add("selected");
+
+        if (currentLibraryMode === "music") {
+          selectedMusicFile = item;
+          selectedSheetFile = null;
+          document.getElementById("selected-library-sheet-url").value = "";
+          document.getElementById("selected-library-music-id").value = item._id;
+        } else {
+          selectedSheetFile = item;
+          selectedMusicFile = null;
+          document.getElementById("selected-library-music-id").value = "";
+          document.getElementById("selected-library-sheet-url").value =
+            item.fileUrl;
+        }
+        document.getElementById(
+          "selected-item"
+        ).textContent = `선택된 항목: ${item.title}`;
+        document.getElementById("attach-selected-item").disabled = false;
+      });
+      list.appendChild(li);
+    });
+  } catch (error) {
+    console.error("Error loading library items:", error);
+    alert("라이브러리를 불러오는 중 오류가 발생했습니다.");
+  }
 }
 
+// "첨부" 버튼 클릭 시 모달 닫기 및 알림
+document
+  .getElementById("attach-selected-item")
+  .addEventListener("click", () => {
+    const modal = document.getElementById("music-modal");
+    modal.style.display = "none";
+    alert("첨부가 완료되었습니다.");
+  });
+
+// 선택 초기화 함수
+function resetLibrarySelection() {
+  const list = document.getElementById("modal-library-list");
+  list.querySelectorAll("li").forEach((li) => li.classList.remove("selected"));
+  document.getElementById("selected-item").textContent = "";
+  document.getElementById("attach-selected-item").disabled = true;
+}
+
+// 게시글 작성 폼 제출
 document
   .getElementById("new-post-form")
   .addEventListener("submit", async (e) => {
     e.preventDefault();
-    const title = document.getElementById("new-post-title").value;
-    const content = document.getElementById("new-post-content").value;
-    const file = document.getElementById("new-post-music-file").files[0];
+    const title = document.getElementById("new-post-title").value.trim();
+    const content = document.getElementById("new-post-content").value.trim();
+    const libraryMusicId = document.getElementById(
+      "selected-library-music-id"
+    ).value;
+    const librarySheetUrl = document.getElementById(
+      "selected-library-sheet-url"
+    ).value;
 
-    const formData = new FormData();
-    formData.append("title", title);
-    formData.append("content", content);
-
-    if (file) {
-      formData.append("music", file);
-    } else if (selectedMusicFile) {
-      formData.append("libraryMusicId", selectedMusicFile._id);
-    } else if (selectedSheetFile) {
-      // 악보는 musicFileUrl가 아니므로 여기서는 그냥 게시글에 악보 첨부 용도로 musicFileUrl 대신?
-      // 요구사항이 "악보 첨부"를 동일한 필드로 처리하는지 불명확.
-      // 여기서는 게시글에 악보 첨부 로직이 없으므로 다음과 같이 가정:
-      // 게시글에 악보 첨부를 위해서는 악보 URL을 어디엔가 저장해야 함.
-      // Post 모델에 악보 필드 추가가 필요하지만 명시 안됨.
-      // 여기서는 content에 악보 URL 추가하는 식으로 처리(간단한 예).
-      const sheetUrl = selectedSheetFile.fileUrl;
-      formData.append("content", content + `\n[악보: ${sheetUrl}]`);
+    if (!title || !content) {
+      alert("제목과 내용을 모두 입력해주세요.");
+      return;
     }
 
-    const response = await fetch(`${SERVER_URL}/api/posts`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: formData,
-    });
+    // JSON 객체 생성
+    const data = {
+      title,
+      content,
+      libraryMusicId: libraryMusicId || null,
+      librarySheetUrl: librarySheetUrl || null,
+    };
 
-    const resData = await response.json();
-    alert(resData.message);
-    if (response.ok) {
-      window.location.href = "board.html";
+    try {
+      const response = await fetch(`${SERVER_URL}/api/posts`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      });
+
+      const resData = await response.json();
+      alert(resData.message);
+      if (response.ok) {
+        window.location.href = "board.html";
+      }
+    } catch (error) {
+      console.error("Error creating new post:", error);
+      alert("새 게시글 작성 중 오류가 발생했습니다.");
     }
   });

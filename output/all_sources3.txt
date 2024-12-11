@@ -2250,25 +2250,22 @@ document
       return;
     }
 
-    const formData = new FormData();
-    formData.append("title", title);
-    formData.append("content", content);
-
-    if (libraryMusicId) {
-      formData.append("libraryMusicId", libraryMusicId);
-    }
-
-    if (librarySheetUrl) {
-      formData.append("librarySheetUrl", librarySheetUrl);
-    }
+    // JSON 객체 생성
+    const data = {
+      title,
+      content,
+      libraryMusicId: libraryMusicId || null,
+      librarySheetUrl: librarySheetUrl || null,
+    };
 
     try {
       const response = await fetch(`${SERVER_URL}/api/posts/${currentPostId}`, {
         method: "PUT",
         headers: {
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: formData,
+        body: JSON.stringify(data),
       });
 
       const resData = await response.json();
@@ -2283,11 +2280,6 @@ document
       alert("게시글 수정 중 오류가 발생했습니다.");
     }
   });
-
-// 페이지 로드 시 게시글 데이터 불러오기
-window.onload = () => {
-  loadPostData();
-};
 
 // "첨부하기" 버튼 클릭 시 모달 열기
 document.getElementById("library-music-btn").addEventListener("click", () => {
@@ -2392,12 +2384,13 @@ async function loadEditLibraryItems() {
   }
 }
 
-// "첨부" 버튼 클릭 시 모달 닫기
+// "첨부" 버튼 클릭 시 모달 닫기 및 알림
 document
   .getElementById("attach-edit-selected-item")
   .addEventListener("click", () => {
     const modal = document.getElementById("edit-music-modal");
     modal.style.display = "none";
+    alert("첨부가 완료되었습니다.");
   });
 
 // 선택 초기화 함수
@@ -2407,6 +2400,10 @@ function resetEditLibrarySelection() {
   document.getElementById("edit-selected-item").textContent = "";
   document.getElementById("attach-edit-selected-item").disabled = true;
 }
+
+window.onload = () => {
+  loadPostData();
+};
 
 
 파일경로: frontend\js\frequencies.js
@@ -3222,12 +3219,13 @@ async function loadLibraryItems() {
   }
 }
 
-// "첨부" 버튼 클릭 시 모달 닫기
+// "첨부" 버튼 클릭 시 모달 닫기 및 알림
 document
   .getElementById("attach-selected-item")
   .addEventListener("click", () => {
     const modal = document.getElementById("music-modal");
     modal.style.display = "none";
+    alert("첨부가 완료되었습니다.");
   });
 
 // 선택 초기화 함수
@@ -3257,30 +3255,22 @@ document
       return;
     }
 
-    if (!libraryMusicId && !librarySheetUrl) {
-      alert("첨부할 음악 또는 악보를 선택해주세요.");
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("title", title);
-    formData.append("content", content);
-
-    if (libraryMusicId) {
-      formData.append("libraryMusicId", libraryMusicId);
-    }
-
-    if (librarySheetUrl) {
-      formData.append("librarySheetUrl", librarySheetUrl);
-    }
+    // JSON 객체 생성
+    const data = {
+      title,
+      content,
+      libraryMusicId: libraryMusicId || null,
+      librarySheetUrl: librarySheetUrl || null,
+    };
 
     try {
       const response = await fetch(`${SERVER_URL}/api/posts`, {
         method: "POST",
         headers: {
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: formData,
+        body: JSON.stringify(data),
       });
 
       const resData = await response.json();
@@ -3327,7 +3317,10 @@ async function loadPostDetail() {
     : "알 수 없음";
   const date = new Date(post.createdAt);
   document.getElementById("post-date").textContent = date.toLocaleString();
-  document.getElementById("post-content").textContent = post.content;
+
+  // post.content을 HTML로 처리
+  displayPostContent(post.content);
+
   document.getElementById("like-count").textContent = post.likeCount || 0;
 
   // 초기 좋아요 상태 반영
@@ -3426,6 +3419,29 @@ async function loadPostDetail() {
   if (post.author && post.author._id === currentUserId) {
     document.getElementById("edit-button").style.display = "inline-block";
     document.getElementById("delete-button").style.display = "inline-block";
+  }
+}
+
+function displayPostContent(content) {
+  const contentElement = document.getElementById("post-content");
+  const regex = /\[악보: (\/uploads\/sheets\/[^)]+)\]/g;
+  const parts = content.split(regex);
+  contentElement.innerHTML = ""; // 기존 내용 초기화
+
+  for (let i = 0; i < parts.length; i++) {
+    if (i % 2 === 0) {
+      // 일반 텍스트
+      const p = document.createElement("p");
+      p.textContent = parts[i];
+      contentElement.appendChild(p);
+    } else {
+      // 악보 이미지 URL
+      const img = document.createElement("img");
+      img.src = `${SERVER_URL}${parts[i]}`;
+      img.alt = "악보";
+      img.style.maxWidth = "100%";
+      contentElement.appendChild(img);
+    }
   }
 }
 

@@ -1,3 +1,4 @@
+<!-- frontend/editPost.html -->
 <!DOCTYPE html>
 <html lang="ko">
   <head>
@@ -99,6 +100,22 @@
         margin-top: 10px;
         font-weight: bold;
       }
+
+      /* "첨부" 버튼 스타일 */
+      .music-modal .attach-button {
+        display: block;
+        margin: 15px auto 0 auto;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      .music-modal .attach-button:hover {
+        background-color: #45a049;
+      }
     </style>
   </head>
   <body>
@@ -115,13 +132,24 @@
         <textarea id="edit-post-content" placeholder="내용" required></textarea
         ><br />
         <!-- 라이브러리 업로드 버튼 -->
-        <button type="button" id="library-music-btn">업로드</button>
+        <button type="button" id="library-music-btn">첨부하기</button>
         <div class="current-file" id="current-file-info" style="display: none">
           현재 음악 파일: <span id="current-file-name"></span>
         </div>
         <div class="file-actions" id="file-actions" style="display: none">
           <button type="button" id="delete-file-button">파일 삭제</button>
         </div>
+
+        <input
+          type="hidden"
+          id="selected-library-music-id"
+          name="libraryMusicId"
+        />
+        <input
+          type="hidden"
+          id="selected-library-sheet-url"
+          name="librarySheetUrl"
+        />
 
         <button type="submit">수정</button>
       </form>
@@ -136,6 +164,10 @@
       </div>
       <ul id="edit-modal-library-list"></ul>
       <div id="edit-selected-item"></div>
+      <!-- "첨부" 버튼 추가 -->
+      <button id="attach-edit-selected-item" class="attach-button" disabled>
+        첨부
+      </button>
     </div>
 
     <script src="js/editPost.js"></script>

@@ -29,7 +29,10 @@ async function loadPostDetail() {
     : "알 수 없음";
   const date = new Date(post.createdAt);
   document.getElementById("post-date").textContent = date.toLocaleString();
-  document.getElementById("post-content").textContent = post.content;
+
+  // post.content을 HTML로 처리
+  displayPostContent(post.content);
+
   document.getElementById("like-count").textContent = post.likeCount || 0;
 
   // 초기 좋아요 상태 반영
@@ -128,6 +131,29 @@ async function loadPostDetail() {
   if (post.author && post.author._id === currentUserId) {
     document.getElementById("edit-button").style.display = "inline-block";
     document.getElementById("delete-button").style.display = "inline-block";
+  }
+}
+
+function displayPostContent(content) {
+  const contentElement = document.getElementById("post-content");
+  const regex = /\[악보: (\/uploads\/sheets\/[^)]+)\]/g;
+  const parts = content.split(regex);
+  contentElement.innerHTML = ""; // 기존 내용 초기화
+
+  for (let i = 0; i < parts.length; i++) {
+    if (i % 2 === 0) {
+      // 일반 텍스트
+      const p = document.createElement("p");
+      p.textContent = parts[i];
+      contentElement.appendChild(p);
+    } else {
+      // 악보 이미지 URL
+      const img = document.createElement("img");
+      img.src = `${SERVER_URL}${parts[i]}`;
+      img.alt = "악보";
+      img.style.maxWidth = "100%";
+      contentElement.appendChild(img);
+    }
   }
 }
 
