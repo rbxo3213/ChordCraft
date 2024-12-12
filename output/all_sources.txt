@@ -113,37 +113,31 @@ exports.deleteMusic = async (req, res) => {
 
 파일경로: backend\controllers\postController.js
 // backend/controllers/postController.js
-
 const Post = require("../models/Post");
 const Music = require("../models/Music"); // 라이브러리 음악 조회를 위해 추가
+const fs = require("fs");
+const path = require("path");
 
-// 게시글 생성
 exports.createPost = async (req, res) => {
   try {
-    const { title, content, libraryMusicId, librarySheetUrl } = req.body;
+    const { title, content, libraryMusicId } = req.body;
     let musicFileUrl = null;
 
-    if (libraryMusicId) {
+    if (libraryMusicId && !req.file) {
       // 라이브러리에서 음악 선택한 경우
       const music = await Music.findById(libraryMusicId);
       if (!music) {
-        return res
-          .status(400)
-          .json({ message: "선택한 라이브러리 음악을 찾을 수 없습니다." });
+        return res.status(400).json({ message: "선택한 라이브러리 음악 없음" });
       }
       musicFileUrl = music.fileUrl; // 라이브러리 음악의 fileUrl 사용
-    }
-
-    // content에 악보 URL 추가
-    let finalContent = content;
-    if (librarySheetUrl) {
-      finalContent += `\n[악보: ${librarySheetUrl}]`;
+    } else if (req.file) {
+      musicFileUrl = `/uploads/${req.file.filename}`;
     }
 
     const newPost = await Post.create({
       author: req.userId,
       title,
-      content: finalContent,
+      content,
       musicFileUrl,
     });
 
@@ -154,7 +148,6 @@ exports.createPost = async (req, res) => {
   }
 };
 
-// 모든 게시글 조회
 exports.getPosts = async (req, res) => {
   try {
     const posts = await Post.find({})
@@ -174,7 +167,6 @@ exports.getPosts = async (req, res) => {
   }
 };
 
-// 내 게시글 조회
 exports.getMyPosts = async (req, res) => {
   try {
     const userId = req.userId;
@@ -195,15 +187,13 @@ exports.getMyPosts = async (req, res) => {
   }
 };
 
-// 특정 게시글 조회
 exports.getPostById = async (req, res) => {
   try {
     const { id } = req.params;
     const post = await Post.findById(id)
       .populate("author", "nickname profilePicture")
       .populate("comments.author", "nickname profilePicture");
-    if (!post)
-      return res.status(404).json({ message: "게시글을 찾을 수 없습니다." });
+    if (!post) return res.status(404).json({ message: "게시글 없음" });
 
     const postObj = post.toObject();
     postObj.likeCount = post.likes.length;
@@ -215,42 +205,57 @@ exports.getPostById = async (req, res) => {
   }
 };
 
-// 게시글 수정
 exports.updatePost = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, content, removeMusic, libraryMusicId, librarySheetUrl } =
-      req.body;
+    const { title, content, removeMusic, libraryMusicId } = req.body;
 
     const post = await Post.findById(id);
-    if (!post)
-      return res.status(404).json({ message: "게시글을 찾을 수 없습니다." });
+    if (!post) return res.status(404).json({ message: "게시글 없음" });
     if (post.author.toString() !== req.userId) {
-      return res
-        .status(403)
-        .json({ message: "게시글을 수정할 권한이 없습니다." });
+      return res.status(403).json({ message: "수정 권한 없음" });
     }
 
-    if (title) post.title = title;
-    if (content) post.content = content;
+    post.title = title;
+    post.content = content;
 
-    if (libraryMusicId) {
-      // 라이브러리에서 음악 선택
+    const uploadsPath = path.join(__dirname, "../uploads");
+
+    if (removeMusic === "true") {
+      // 기존 파일 삭제
+      if (post.musicFileUrl) {
+        const oldFilename = path.basename(post.musicFileUrl);
+        const oldFilePath = path.join(uploadsPath, oldFilename);
+        if (fs.existsSync(oldFilePath)) {
+          fs.unlinkSync(oldFilePath);
+        }
+      }
+      post.musicFileUrl = null;
+    } else if (req.file) {
+      // 새 파일 업로드 -> 기존 파일 삭제 후 교체
+      if (post.musicFileUrl) {
+        const oldFilename = path.basename(post.musicFileUrl);
+        const oldFilePath = path.join(uploadsPath, oldFilename);
+        if (fs.existsSync(oldFilePath)) {
+          fs.unlinkSync(oldFilePath);
+        }
+      }
+      post.musicFileUrl = `/uploads/${req.file.filename}`;
+    } else if (libraryMusicId) {
+      // 라이브러리 음악 선택
+      if (post.musicFileUrl) {
+        // 기존 파일 삭제
+        const oldFilename = path.basename(post.musicFileUrl);
+        const oldFilePath = path.join(uploadsPath, oldFilename);
+        if (fs.existsSync(oldFilePath)) {
+          fs.unlinkSync(oldFilePath);
+        }
+      }
       const music = await Music.findById(libraryMusicId);
       if (!music) {
-        return res
-          .status(400)
-          .json({ message: "선택한 라이브러리 음악을 찾을 수 없습니다." });
+        return res.status(400).json({ message: "선택한 라이브러리 음악 없음" });
       }
       post.musicFileUrl = music.fileUrl;
-    } else if (removeMusic === "true") {
-      // 음악 제거
-      post.musicFileUrl = null;
-    }
-
-    // content에 악보 URL 추가
-    if (librarySheetUrl) {
-      post.content += `\n[악보: ${librarySheetUrl}]`;
     }
 
     await post.save();
@@ -261,20 +266,24 @@ exports.updatePost = async (req, res) => {
   }
 };
 
-// 게시글 삭제
 exports.deletePost = async (req, res) => {
   try {
     const { id } = req.params;
     const post = await Post.findById(id);
-    if (!post)
-      return res.status(404).json({ message: "게시글을 찾을 수 없습니다." });
+    if (!post) return res.status(404).json({ message: "게시글 없음" });
     if (post.author.toString() !== req.userId) {
-      return res
-        .status(403)
-        .json({ message: "게시글을 삭제할 권한이 없습니다." });
+      return res.status(403).json({ message: "삭제 권한 없음" });
     }
 
-    // 게시글 삭제 (라이브러리의 파일은 삭제하지 않음)
+    if (post.musicFileUrl) {
+      const uploadsPath = path.join(__dirname, "../uploads");
+      const oldFilename = path.basename(post.musicFileUrl);
+      const oldFilePath = path.join(uploadsPath, oldFilename);
+      if (fs.existsSync(oldFilePath)) {
+        fs.unlinkSync(oldFilePath);
+      }
+    }
+
     await Post.findByIdAndDelete(id);
     res.status(200).json({ message: "게시글 삭제 성공" });
   } catch (err) {
@@ -283,14 +292,12 @@ exports.deletePost = async (req, res) => {
   }
 };
 
-// 댓글 추가
 exports.addComment = async (req, res) => {
   try {
     const { id } = req.params;
     const { content } = req.body;
     const post = await Post.findById(id);
-    if (!post)
-      return res.status(400).json({ message: "게시글을 찾을 수 없습니다." });
+    if (!post) return res.status(400).json({ message: "게시글 없음" });
 
     post.comments.push({ author: req.userId, content });
     await post.save();
@@ -302,22 +309,17 @@ exports.addComment = async (req, res) => {
   }
 };
 
-// 댓글 수정
 exports.updateComment = async (req, res) => {
   try {
     const { id, commentId } = req.params;
     const { content } = req.body;
     const post = await Post.findById(id);
-    if (!post)
-      return res.status(404).json({ message: "게시글을 찾을 수 없습니다." });
+    if (!post) return res.status(404).json({ message: "게시글 없음" });
 
     const comment = post.comments.id(commentId);
-    if (!comment)
-      return res.status(404).json({ message: "댓글을 찾을 수 없습니다." });
+    if (!comment) return res.status(404).json({ message: "댓글 없음" });
     if (comment.author.toString() !== req.userId) {
-      return res
-        .status(403)
-        .json({ message: "댓글을 수정할 권한이 없습니다." });
+      return res.status(403).json({ message: "수정 권한 없음" });
     }
 
     comment.content = content;
@@ -329,21 +331,16 @@ exports.updateComment = async (req, res) => {
   }
 };
 
-// 댓글 삭제
 exports.deleteComment = async (req, res) => {
   try {
     const { id, commentId } = req.params;
     const post = await Post.findById(id);
-    if (!post)
-      return res.status(404).json({ message: "게시글을 찾을 수 없습니다." });
+    if (!post) return res.status(404).json({ message: "게시글 없음" });
 
     const comment = post.comments.id(commentId);
-    if (!comment)
-      return res.status(404).json({ message: "댓글을 찾을 수 없습니다." });
+    if (!comment) return res.status(404).json({ message: "댓글 없음" });
     if (comment.author.toString() !== req.userId) {
-      return res
-        .status(403)
-        .json({ message: "댓글을 삭제할 권한이 없습니다." });
+      return res.status(403).json({ message: "삭제 권한 없음" });
     }
 
     post.comments.pull(commentId);
@@ -356,13 +353,11 @@ exports.deleteComment = async (req, res) => {
   }
 };
 
-// 좋아요 토글
 exports.toggleLike = async (req, res) => {
   try {
     const { id } = req.params;
     const post = await Post.findById(id);
-    if (!post)
-      return res.status(404).json({ message: "게시글을 찾을 수 없습니다." });
+    if (!post) return res.status(404).json({ message: "게시글 없음" });
 
     const userId = req.userId;
     const index = post.likes.findIndex((uid) => uid.toString() === userId);
@@ -373,10 +368,9 @@ exports.toggleLike = async (req, res) => {
     }
 
     await post.save();
-    res.status(200).json({
-      message: "좋아요 상태가 변경되었습니다.",
-      likeCount: post.likes.length,
-    });
+    res
+      .status(200)
+      .json({ message: "좋아요 반영 성공", likeCount: post.likes.length });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "서버 오류" });
@@ -670,32 +664,31 @@ module.exports = mongoose.model("Music", MusicSchema);
 
 파일경로: backend\models\Post.js
 // backend/models/Post.js
-
 const mongoose = require("mongoose");
 
-const postSchema = new mongoose.Schema(
-  {
-    title: { type: String, required: true },
-    content: { type: String, required: true },
-    musicFileUrl: { type: String, default: null },
-    author: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
-    comments: [
-      {
-        author: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-        content: { type: String, required: true },
-        createdAt: { type: Date, default: Date.now },
-      },
-    ],
-    likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
-  },
-  { timestamps: true }
-);
+const CommentSchema = new mongoose.Schema({
+  author: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  content: String,
+  createdAt: { type: Date, default: Date.now },
+});
 
-module.exports = mongoose.model("Post", postSchema);
+const PostSchema = new mongoose.Schema({
+  author: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  title: { type: String, required: true },
+  content: { type: String, required: true },
+  musicFileUrl: { type: String },
+  comments: [
+    {
+      author: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      content: String,
+      createdAt: { type: Date, default: Date.now },
+    },
+  ],
+  likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+  createdAt: { type: Date, default: Date.now },
+});
+
+module.exports = mongoose.model("Post", PostSchema);
 
 
 파일경로: backend\models\User.js
@@ -755,30 +748,31 @@ const express = require("express");
 const router = express.Router();
 const postController = require("../controllers/postController");
 const authMiddleware = require("../middlewares/authMiddleware");
-// const multer = require("multer"); // 제거
-// const path = require("path"); // 제거
+const multer = require("multer");
+const path = require("path");
 
-// const storage = multer.diskStorage({
-//   destination: (req, file, cb) => {
-//     cb(null, path.join(__dirname, "../uploads/"));
-//   },
-//   filename: (req, file, cb) => {
-//     cb(null, Date.now() + path.extname(file.originalname));
-//   },
-// });
-// const upload = multer({ storage }); // 제거
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, path.join(__dirname, "../uploads/"));
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname));
+  },
+});
+const upload = multer({ storage });
 
 router
   .route("/")
   .get(postController.getPosts)
-  .post(authMiddleware, postController.createPost); // multer 미들웨어 제거
+  .post(authMiddleware, upload.single("music"), postController.createPost);
 
 router.get("/mine", authMiddleware, postController.getMyPosts);
 
 router
   .route("/:id")
   .get(postController.getPostById)
-  .put(authMiddleware, postController.updatePost) // multer 미들웨어 제거
+  // PUT 요청에도 upload.single("music") 적용
+  .put(authMiddleware, upload.single("music"), postController.updatePost)
   .delete(authMiddleware, postController.deletePost);
 
 // 댓글 CRUD
@@ -978,7 +972,6 @@ module.exports = router;
 
 
 파일경로: frontend\editPost.html
-<!-- frontend/editPost.html -->
 <!DOCTYPE html>
 <html lang="ko">
   <head>
@@ -1080,22 +1073,6 @@ module.exports = router;
         margin-top: 10px;
         font-weight: bold;
       }
-
-      /* "첨부" 버튼 스타일 */
-      .music-modal .attach-button {
-        display: block;
-        margin: 15px auto 0 auto;
-        background-color: #4caf50;
-        color: white;
-        border: none;
-        padding: 8px 16px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 14px;
-      }
-      .music-modal .attach-button:hover {
-        background-color: #45a049;
-      }
     </style>
   </head>
   <body>
@@ -1112,24 +1089,13 @@ module.exports = router;
         <textarea id="edit-post-content" placeholder="내용" required></textarea
         ><br />
         <!-- 라이브러리 업로드 버튼 -->
-        <button type="button" id="library-music-btn">첨부하기</button>
+        <button type="button" id="library-music-btn">업로드</button>
         <div class="current-file" id="current-file-info" style="display: none">
           현재 음악 파일: <span id="current-file-name"></span>
         </div>
         <div class="file-actions" id="file-actions" style="display: none">
           <button type="button" id="delete-file-button">파일 삭제</button>
         </div>
-
-        <input
-          type="hidden"
-          id="selected-library-music-id"
-          name="libraryMusicId"
-        />
-        <input
-          type="hidden"
-          id="selected-library-sheet-url"
-          name="librarySheetUrl"
-        />
 
         <button type="submit">수정</button>
       </form>
@@ -1144,10 +1110,6 @@ module.exports = router;
       </div>
       <ul id="edit-modal-library-list"></ul>
       <div id="edit-selected-item"></div>
-      <!-- "첨부" 버튼 추가 -->
-      <button id="attach-edit-selected-item" class="attach-button" disabled>
-        첨부
-      </button>
     </div>
 
     <script src="js/editPost.js"></script>
@@ -1163,54 +1125,52 @@ module.exports = router;
     <title>Chord Craft 메인페이지</title>
     <link rel="stylesheet" href="css/style.css" />
     <style>
-      /* 기존 스타일 유지 */
-
-      /* 녹음한 음악 제목 입력 모달 스타일 */
+      h1 {
+        margin-top: 100px;
+        text-align: center;
+      }
+      .recording-container {
+        text-align: center;
+        margin: 20px 0;
+      }
+      /* 서브창 스타일 */
       .modal {
         display: none;
         position: fixed;
         top: 20%;
         left: 30%;
         width: 40%;
-        background: #faf8ef;
+        background: #fff;
         border: 1px solid #ccc;
         padding: 20px;
-        border-radius: 8px;
         z-index: 999;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
       }
       .modal h3 {
-        text-align: center;
         margin-bottom: 10px;
+      }
+      .modal button {
+        margin-top: 10px;
       }
       .modal input[type="text"] {
         width: 100%;
-        padding: 8px;
         margin-bottom: 10px;
-        font-size: 14px;
+        padding: 8px;
       }
-      .modal button {
+
+      /* 악보 업로드용 서브창 버튼 */
+      #open-sheet-upload {
+        display: block;
+        margin: 20px auto;
+        background: #f3e5ab;
+        border: 1px solid #ccc;
         padding: 8px 14px;
-        margin-right: 10px;
-        border: none;
         border-radius: 4px;
         cursor: pointer;
         font-size: 14px;
       }
-      .modal button#save-recorded-music {
-        background-color: #f3e5ab;
-      }
-      .modal button#save-recorded-music:hover {
+      #open-sheet-upload:hover {
         background-color: #ecd898;
       }
-      .modal button#close-record-name-modal {
-        background-color: #ccc;
-      }
-      .modal button#close-record-name-modal:hover {
-        background-color: #bbb;
-      }
-
-      /* 악보 보관함 모달 스타일은 기존 유지 */
     </style>
   </head>
   <body>
@@ -1620,10 +1580,6 @@ module.exports = router;
         text-align: center;
         margin-bottom: 20px;
       }
-      .form-container form {
-        display: flex;
-        flex-direction: column;
-      }
       .form-container input[type="text"],
       .form-container textarea {
         width: 100%;
@@ -1693,22 +1649,6 @@ module.exports = router;
         margin-top: 10px;
         font-weight: bold;
       }
-
-      /* "첨부" 버튼 스타일 */
-      .music-modal .attach-button {
-        display: block;
-        margin: 15px auto 0 auto;
-        background-color: #4caf50;
-        color: white;
-        border: none;
-        padding: 8px 16px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 14px;
-      }
-      .music-modal .attach-button:hover {
-        background-color: #45a049;
-      }
     </style>
   </head>
   <body>
@@ -1724,18 +1664,14 @@ module.exports = router;
         /><br />
         <textarea id="new-post-content" placeholder="내용" required></textarea
         ><br />
-        <button type="button" id="attach-music-btn">첨부하기</button>
-        <!-- 파일 input은 숨김, libraryMusicId와 librarySheetUrl로 처리 -->
+        <button type="button" id="attach-music-btn">업로드</button>
+        <!-- 파일 input은 숨김, libraryMusicId로 처리 -->
         <input
-          type="hidden"
-          id="selected-library-music-id"
-          name="libraryMusicId"
-        />
-        <input
-          type="hidden"
-          id="selected-library-sheet-url"
-          name="librarySheetUrl"
-        />
+          type="file"
+          id="new-post-music-file"
+          accept="audio/*"
+          style="display: none"
+        /><br />
         <button type="submit">작성</button>
       </form>
     </div>
@@ -1749,10 +1685,6 @@ module.exports = router;
       </div>
       <ul id="modal-library-list"></ul>
       <div id="selected-item"></div>
-      <!-- "첨부" 버튼 추가 -->
-      <button id="attach-selected-item" class="attach-button" disabled>
-        첨부
-      </button>
     </div>
 
     <script src="js/newPost.js"></script>
@@ -2193,118 +2125,88 @@ async function loadPostData() {
     return;
   }
 
-  try {
-    const response = await fetch(`${SERVER_URL}/api/posts/${postId}`);
-    const data = await response.json();
-    if (!response.ok) {
-      alert(data.message);
-      window.location.href = "board.html";
-      return;
-    }
-
-    const post = data.post;
-    document.getElementById("edit-post-title").value = post.title;
-    document.getElementById("edit-post-content").value = post.content;
-
-    if (post.musicFileUrl) {
-      currentFileUrl = post.musicFileUrl;
-      document.getElementById("current-file-name").textContent =
-        post.musicFileUrl.split("/").pop();
-      document.getElementById("current-file-info").style.display = "block";
-      document.getElementById("file-actions").style.display = "block";
-      document.getElementById("selected-library-music-id").value = ""; // 초기화
-      document.getElementById("selected-library-sheet-url").value = ""; // 초기화
-    }
-  } catch (error) {
-    console.error("Error loading post data:", error);
-    alert("게시글 데이터를 불러오는 중 오류가 발생했습니다.");
+  const response = await fetch(`${SERVER_URL}/api/posts/${postId}`);
+  const data = await response.json();
+  if (!response.ok) {
+    alert(data.message);
     window.location.href = "board.html";
+    return;
+  }
+
+  const post = data.post;
+  document.getElementById("edit-post-title").value = post.title;
+  document.getElementById("edit-post-content").value = post.content;
+
+  if (post.musicFileUrl) {
+    currentFileUrl = post.musicFileUrl;
+    document.getElementById("current-file-name").textContent = post.musicFileUrl
+      .split("/")
+      .pop();
+    document.getElementById("current-file-info").style.display = "block";
+    document.getElementById("file-actions").style.display = "block";
   }
 }
 
-// "파일 삭제" 버튼 클릭 시 처리
 document.getElementById("delete-file-button").addEventListener("click", () => {
   currentFileUrl = null;
   document.getElementById("current-file-info").style.display = "none";
   document.getElementById("file-actions").style.display = "none";
-  document.getElementById("selected-library-music-id").value = "";
-  document.getElementById("selected-library-sheet-url").value = "";
 });
 
-// 게시글 수정 폼 제출
 document
   .getElementById("edit-post-form")
   .addEventListener("submit", async (e) => {
     e.preventDefault();
-    const title = document.getElementById("edit-post-title").value.trim();
-    const content = document.getElementById("edit-post-content").value.trim();
-    const libraryMusicId = document.getElementById(
-      "selected-library-music-id"
-    ).value;
-    const librarySheetUrl = document.getElementById(
-      "selected-library-sheet-url"
-    ).value;
-
-    if (!title || !content) {
-      alert("제목과 내용을 모두 입력해주세요.");
-      return;
-    }
+    const title = document.getElementById("edit-post-title").value;
+    const content = document.getElementById("edit-post-content").value;
 
     const formData = new FormData();
     formData.append("title", title);
     formData.append("content", content);
 
-    if (libraryMusicId) {
-      formData.append("libraryMusicId", libraryMusicId);
+    if (currentFileUrl === null && !selectedMusicFile && !selectedSheetFile) {
+      formData.append("removeMusic", "true");
+    } else if (selectedMusicFile) {
+      formData.append("libraryMusicId", selectedMusicFile._id);
+    } else if (selectedSheetFile) {
+      // 악보 첨부 로직
+      const sheetUrl = selectedSheetFile.fileUrl;
+      formData.append("content", content + `\n[악보: ${sheetUrl}]`);
     }
 
-    if (librarySheetUrl) {
-      formData.append("librarySheetUrl", librarySheetUrl);
-    }
+    const response = await fetch(`${SERVER_URL}/api/posts/${currentPostId}`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
 
-    try {
-      const response = await fetch(`${SERVER_URL}/api/posts/${currentPostId}`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      const resData = await response.json();
-      if (!response.ok) {
-        alert(resData.message || "서버 오류 발생");
-      } else {
-        alert(resData.message);
-        window.location.href = `postDetail.html?postId=${currentPostId}`;
-      }
-    } catch (error) {
-      console.error("Error updating post:", error);
-      alert("게시글 수정 중 오류가 발생했습니다.");
+    const resData = await response.json();
+    if (!response.ok) {
+      alert(resData.message || "서버 오류 발생");
+    } else {
+      alert(resData.message);
+      window.location.href = `postDetail.html?postId=${currentPostId}`;
     }
   });
 
-// 페이지 로드 시 게시글 데이터 불러오기
 window.onload = () => {
   loadPostData();
 };
 
-// "첨부하기" 버튼 클릭 시 모달 열기
 document.getElementById("library-music-btn").addEventListener("click", () => {
   const modal = document.getElementById("edit-music-modal");
   modal.style.display = "block";
   loadEditLibraryItems();
 });
 
-// 모달 닫기 버튼
 document
   .getElementById("edit-music-modal-close")
   .addEventListener("click", () => {
     document.getElementById("edit-music-modal").style.display = "none";
-    resetEditLibrarySelection();
   });
 
-// 라이브러리 모드 전환 버튼들
 document
   .getElementById("edit-library-music-switch")
   .addEventListener("click", () => {
@@ -2319,7 +2221,6 @@ document
     loadEditLibraryItems();
   });
 
-// 라이브러리 항목 로드
 async function loadEditLibraryItems() {
   const list = document.getElementById("edit-modal-library-list");
   list.innerHTML = "";
@@ -2331,81 +2232,54 @@ async function loadEditLibraryItems() {
     url = `${SERVER_URL}/api/sheets/user`;
   }
 
-  try {
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await res.json();
-
-    let items;
-    if (currentEditLibraryMode === "music") {
-      items = data.musicList || [];
-    } else {
-      items = data.sheets || [];
-    }
-
-    if (items.length === 0) {
-      list.textContent = "등록된 항목이 없습니다.";
-      document.getElementById("edit-selected-item").textContent = "";
-      document.getElementById("attach-edit-selected-item").disabled = true;
-      return;
-    }
-
-    // 선택된 항목 초기화
-    selectedMusicFile = null;
-    selectedSheetFile = null;
-    document.getElementById("edit-selected-item").textContent = "";
-    document.getElementById("attach-edit-selected-item").disabled = true;
-
-    items.forEach((item) => {
-      const li = document.createElement("li");
-      li.textContent = item.title;
-      li.addEventListener("click", () => {
-        // 선택 효과
-        list
-          .querySelectorAll("li")
-          .forEach((li) => li.classList.remove("selected"));
-        li.classList.add("selected");
-
-        if (currentEditLibraryMode === "music") {
-          selectedMusicFile = item;
-          selectedSheetFile = null;
-          document.getElementById("selected-library-sheet-url").value = "";
-          document.getElementById("selected-library-music-id").value = item._id;
-        } else {
-          selectedSheetFile = item;
-          selectedMusicFile = null;
-          document.getElementById("selected-library-music-id").value = "";
-          document.getElementById("selected-library-sheet-url").value =
-            item.fileUrl;
-        }
-        document.getElementById(
-          "edit-selected-item"
-        ).textContent = `선택된 항목: ${item.title}`;
-        document.getElementById("attach-edit-selected-item").disabled = false;
-      });
-      list.appendChild(li);
-    });
-  } catch (error) {
-    console.error("Error loading edit library items:", error);
-    alert("라이브러리를 불러오는 중 오류가 발생했습니다.");
-  }
-}
-
-// "첨부" 버튼 클릭 시 모달 닫기
-document
-  .getElementById("attach-edit-selected-item")
-  .addEventListener("click", () => {
-    const modal = document.getElementById("edit-music-modal");
-    modal.style.display = "none";
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
   });
+  const data = await res.json();
 
-// 선택 초기화 함수
-function resetEditLibrarySelection() {
-  const list = document.getElementById("edit-modal-library-list");
-  list.querySelectorAll("li").forEach((li) => li.classList.remove("selected"));
+  let items;
+  if (currentEditLibraryMode === "music") {
+    items = data.musicList || [];
+  } else {
+    items = data.sheets || [];
+  }
+
+  selectedMusicFile = null;
+  selectedSheetFile = null;
   document.getElementById("edit-selected-item").textContent = "";
-  document.getElementById("attach-edit-selected-item").disabled = true;
+
+  if (items.length === 0) {
+    list.textContent = "등록된 항목이 없습니다.";
+    return;
+  }
+
+  items.forEach((item) => {
+    const li = document.createElement("li");
+    li.textContent = item.title;
+    li.addEventListener("click", () => {
+      list
+        .querySelectorAll("li")
+        .forEach((li) => li.classList.remove("selected"));
+      li.classList.add("selected");
+
+      if (currentEditLibraryMode === "music") {
+        selectedMusicFile = item;
+        selectedSheetFile = null;
+      } else {
+        selectedSheetFile = item;
+        selectedMusicFile = null;
+      }
+      document.getElementById(
+        "edit-selected-item"
+      ).textContent = `선택된 항목: ${item.title}`;
+
+      // 기존 파일 정보 숨기기
+      currentFileUrl = null;
+      document.getElementById("current-file-info").style.display = "none";
+      document.getElementById("file-actions").style.display = "none";
+    });
+    list.appendChild(li);
+  });
 }
 
 
@@ -2714,18 +2588,11 @@ async function startRecording() {
 
   recordedChunks = [];
   dest = audioContext.createMediaStreamDestination();
-  // MediaStreamSource를 dest로 연결
-  const source = audioContext.createMediaStreamSource(dest.stream);
   mediaRecorder = new MediaRecorder(dest.stream);
   mediaRecorder.ondataavailable = (e) => {
     if (e.data.size > 0) {
       recordedChunks.push(e.data);
     }
-  };
-  mediaRecorder.onstop = () => {
-    console.log("Recording stopped, ready to save");
-    // 모달 표시
-    document.getElementById("record-name-modal").style.display = "block";
   };
   mediaRecorder.start();
   console.log("Recording started");
@@ -2737,55 +2604,19 @@ function stopRecording() {
     return;
   }
   mediaRecorder.stop();
+  mediaRecorder.onstop = () => {
+    console.log("Recording stopped");
+    // 녹음 종료 후 음악 이름 입력 모달 표시
+    document.getElementById("record-name-modal").style.display = "block";
+  };
 }
 
-// Handle save-recorded-music button
-document
-  .getElementById("save-recorded-music")
-  .addEventListener("click", async () => {
-    const title = document.getElementById("recorded-music-title").value.trim();
-    if (!title) {
-      alert("음악 제목을 입력해주세요.");
-      return;
-    }
-    if (recordedChunks.length === 0) {
-      alert("녹음된 음악이 없습니다.");
-      return;
-    }
-
-    const blob = new Blob(recordedChunks, { type: "audio/webm" });
-    const file = new File([blob], `${title}.webm`, { type: "audio/webm" });
-
-    const formData = new FormData();
-    formData.append("title", title);
-    formData.append("music", file);
-
-    const res = await fetch(`${SERVER_URL}/api/music/upload`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: formData,
-    });
-
-    const resData = await res.json();
-    if (res.ok) {
-      alert("녹음한 음악 저장 성공");
-      // 녹음 상태 초기화
-      recordedChunks = [];
-      document.getElementById("recorded-music-title").value = "";
-      document.getElementById("record-name-modal").style.display = "none";
-    } else {
-      alert("녹음한 음악 저장 실패: " + (resData.error || resData.message));
-    }
-  });
-
-// Handle close-record-name-modal button
-document
-  .getElementById("close-record-name-modal")
-  .addEventListener("click", () => {
-    document.getElementById("record-name-modal").style.display = "none";
-  });
+// 모달 스타일 및 레이아웃 개선
+const modals = document.querySelectorAll(".modal");
+modals.forEach((modal) => {
+  modal.style.background = "#faf8ef";
+  modal.style.borderRadius = "8px";
+});
 
 // 악보 보관함 열기
 document
@@ -3120,7 +2951,6 @@ let selectedMusicFile = null;
 let selectedSheetFile = null;
 let currentLibraryMode = "music"; // "music" or "sheet"
 
-// "첨부하기" 버튼 클릭 시 모달 열기
 document
   .getElementById("attach-music-btn")
   .addEventListener("click", async () => {
@@ -3129,13 +2959,10 @@ document
     loadLibraryItems();
   });
 
-// 모달 닫기 버튼
 document.getElementById("music-modal-close").addEventListener("click", () => {
   document.getElementById("music-modal").style.display = "none";
-  resetLibrarySelection();
 });
 
-// 라이브러리 모드 전환 버튼들
 document
   .getElementById("library-music-switch")
   .addEventListener("click", () => {
@@ -3149,7 +2976,6 @@ document
     loadLibraryItems();
   });
 
-// 라이브러리 항목 로드
 async function loadLibraryItems() {
   const list = document.getElementById("modal-library-list");
   list.innerHTML = "";
@@ -3161,136 +2987,91 @@ async function loadLibraryItems() {
     url = `${SERVER_URL}/api/sheets/user`;
   }
 
-  try {
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await res.json();
-
-    let items;
-    if (currentLibraryMode === "music") {
-      items = data.musicList || [];
-    } else {
-      items = data.sheets || [];
-    }
-
-    if (items.length === 0) {
-      list.textContent = "등록된 항목이 없습니다.";
-      document.getElementById("selected-item").textContent = "";
-      document.getElementById("attach-selected-item").disabled = true;
-      return;
-    }
-
-    // 선택된 항목 초기화
-    selectedMusicFile = null;
-    selectedSheetFile = null;
-    document.getElementById("selected-item").textContent = "";
-    document.getElementById("attach-selected-item").disabled = true;
-
-    items.forEach((item) => {
-      const li = document.createElement("li");
-      li.textContent = item.title;
-      li.addEventListener("click", () => {
-        // 선택 효과
-        list
-          .querySelectorAll("li")
-          .forEach((li) => li.classList.remove("selected"));
-        li.classList.add("selected");
-
-        if (currentLibraryMode === "music") {
-          selectedMusicFile = item;
-          selectedSheetFile = null;
-          document.getElementById("selected-library-sheet-url").value = "";
-          document.getElementById("selected-library-music-id").value = item._id;
-        } else {
-          selectedSheetFile = item;
-          selectedMusicFile = null;
-          document.getElementById("selected-library-music-id").value = "";
-          document.getElementById("selected-library-sheet-url").value =
-            item.fileUrl;
-        }
-        document.getElementById(
-          "selected-item"
-        ).textContent = `선택된 항목: ${item.title}`;
-        document.getElementById("attach-selected-item").disabled = false;
-      });
-      list.appendChild(li);
-    });
-  } catch (error) {
-    console.error("Error loading library items:", error);
-    alert("라이브러리를 불러오는 중 오류가 발생했습니다.");
-  }
-}
-
-// "첨부" 버튼 클릭 시 모달 닫기
-document
-  .getElementById("attach-selected-item")
-  .addEventListener("click", () => {
-    const modal = document.getElementById("music-modal");
-    modal.style.display = "none";
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
   });
+  const data = await res.json();
 
-// 선택 초기화 함수
-function resetLibrarySelection() {
-  const list = document.getElementById("modal-library-list");
-  list.querySelectorAll("li").forEach((li) => li.classList.remove("selected"));
+  let items;
+  if (currentLibraryMode === "music") {
+    items = data.musicList || [];
+  } else {
+    items = data.sheets || [];
+  }
+
+  if (items.length === 0) {
+    list.textContent = "등록된 항목이 없습니다.";
+    document.getElementById("selected-item").textContent = "";
+    return;
+  }
+
+  // 선택된 항목 초기화
+  selectedMusicFile = null;
+  selectedSheetFile = null;
   document.getElementById("selected-item").textContent = "";
-  document.getElementById("attach-selected-item").disabled = true;
+
+  items.forEach((item) => {
+    const li = document.createElement("li");
+    li.textContent = item.title;
+    li.addEventListener("click", () => {
+      // 선택 효과
+      list
+        .querySelectorAll("li")
+        .forEach((li) => li.classList.remove("selected"));
+      li.classList.add("selected");
+
+      if (currentLibraryMode === "music") {
+        selectedMusicFile = item;
+        selectedSheetFile = null;
+      } else {
+        selectedSheetFile = item;
+        selectedMusicFile = null;
+      }
+      document.getElementById(
+        "selected-item"
+      ).textContent = `선택된 항목: ${item.title}`;
+    });
+    list.appendChild(li);
+  });
 }
 
-// 게시글 작성 폼 제출
 document
   .getElementById("new-post-form")
   .addEventListener("submit", async (e) => {
     e.preventDefault();
-    const title = document.getElementById("new-post-title").value.trim();
-    const content = document.getElementById("new-post-content").value.trim();
-    const libraryMusicId = document.getElementById(
-      "selected-library-music-id"
-    ).value;
-    const librarySheetUrl = document.getElementById(
-      "selected-library-sheet-url"
-    ).value;
-
-    if (!title || !content) {
-      alert("제목과 내용을 모두 입력해주세요.");
-      return;
-    }
-
-    if (!libraryMusicId && !librarySheetUrl) {
-      alert("첨부할 음악 또는 악보를 선택해주세요.");
-      return;
-    }
+    const title = document.getElementById("new-post-title").value;
+    const content = document.getElementById("new-post-content").value;
+    const file = document.getElementById("new-post-music-file").files[0];
 
     const formData = new FormData();
     formData.append("title", title);
     formData.append("content", content);
 
-    if (libraryMusicId) {
-      formData.append("libraryMusicId", libraryMusicId);
+    if (file) {
+      formData.append("music", file);
+    } else if (selectedMusicFile) {
+      formData.append("libraryMusicId", selectedMusicFile._id);
+    } else if (selectedSheetFile) {
+      // 악보는 musicFileUrl가 아니므로 여기서는 그냥 게시글에 악보 첨부 용도로 musicFileUrl 대신?
+      // 요구사항이 "악보 첨부"를 동일한 필드로 처리하는지 불명확.
+      // 여기서는 게시글에 악보 첨부 로직이 없으므로 다음과 같이 가정:
+      // 게시글에 악보 첨부를 위해서는 악보 URL을 어디엔가 저장해야 함.
+      // Post 모델에 악보 필드 추가가 필요하지만 명시 안됨.
+      // 여기서는 content에 악보 URL 추가하는 식으로 처리(간단한 예).
+      const sheetUrl = selectedSheetFile.fileUrl;
+      formData.append("content", content + `\n[악보: ${sheetUrl}]`);
     }
 
-    if (librarySheetUrl) {
-      formData.append("librarySheetUrl", librarySheetUrl);
-    }
+    const response = await fetch(`${SERVER_URL}/api/posts`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
 
-    try {
-      const response = await fetch(`${SERVER_URL}/api/posts`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      const resData = await response.json();
-      alert(resData.message);
-      if (response.ok) {
-        window.location.href = "board.html";
-      }
-    } catch (error) {
-      console.error("Error creating new post:", error);
-      alert("새 게시글 작성 중 오류가 발생했습니다.");
+    const resData = await response.json();
+    alert(resData.message);
+    if (response.ok) {
+      window.location.href = "board.html";
     }
   });
 

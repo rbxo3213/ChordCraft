@@ -5,54 +5,52 @@
     <title>Chord Craft 메인페이지</title>
     <link rel="stylesheet" href="css/style.css" />
     <style>
-      /* 기존 스타일 유지 */
-
-      /* 녹음한 음악 제목 입력 모달 스타일 */
+      h1 {
+        margin-top: 100px;
+        text-align: center;
+      }
+      .recording-container {
+        text-align: center;
+        margin: 20px 0;
+      }
+      /* 서브창 스타일 */
       .modal {
         display: none;
         position: fixed;
         top: 20%;
         left: 30%;
         width: 40%;
-        background: #faf8ef;
+        background: #fff;
         border: 1px solid #ccc;
         padding: 20px;
-        border-radius: 8px;
         z-index: 999;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
       }
       .modal h3 {
-        text-align: center;
         margin-bottom: 10px;
+      }
+      .modal button {
+        margin-top: 10px;
       }
       .modal input[type="text"] {
         width: 100%;
-        padding: 8px;
         margin-bottom: 10px;
-        font-size: 14px;
+        padding: 8px;
       }
-      .modal button {
+
+      /* 악보 업로드용 서브창 버튼 */
+      #open-sheet-upload {
+        display: block;
+        margin: 20px auto;
+        background: #f3e5ab;
+        border: 1px solid #ccc;
         padding: 8px 14px;
-        margin-right: 10px;
-        border: none;
         border-radius: 4px;
         cursor: pointer;
         font-size: 14px;
       }
-      .modal button#save-recorded-music {
-        background-color: #f3e5ab;
-      }
-      .modal button#save-recorded-music:hover {
+      #open-sheet-upload:hover {
         background-color: #ecd898;
       }
-      .modal button#close-record-name-modal {
-        background-color: #ccc;
-      }
-      .modal button#close-record-name-modal:hover {
-        background-color: #bbb;
-      }
-
-      /* 악보 보관함 모달 스타일은 기존 유지 */
     </style>
   </head>
   <body>

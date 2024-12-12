@@ -1,16 +1,9 @@
 // backend/controllers/sheetController.js
+const Sheet = require("../models/Sheet");
 const User = require("../models/User");
 const mongoose = require("mongoose");
 const fs = require("fs");
 const path = require("path");
-
-const SheetSchema = new mongoose.Schema({
-  title: { type: String, required: true },
-  fileUrl: { type: String, required: true },
-  uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-  uploadDate: { type: Date, default: Date.now },
-});
-const Sheet = mongoose.model("Sheet", SheetSchema);
 
 exports.uploadSheet = async (req, res) => {
   try {
@@ -24,6 +17,8 @@ exports.uploadSheet = async (req, res) => {
       fileUrl,
       uploadedBy: userId,
     });
+
+    await User.findByIdAndUpdate(userId, { $push: { sheets: newSheet._id } });
 
     res.status(201).json({ message: "악보 업로드 성공", sheet: newSheet });
   } catch (err) {
@@ -60,6 +55,8 @@ exports.deleteSheet = async (req, res) => {
     }
 
     await Sheet.findByIdAndDelete(id);
+    await User.findByIdAndUpdate(userId, { $pull: { sheets: id } });
+
     res.status(200).json({ message: "악보 삭제 성공" });
   } catch (err) {
     console.error(err);

@@ -18,10 +18,6 @@
         text-align: center;
         margin-bottom: 20px;
       }
-      .form-container form {
-        display: flex;
-        flex-direction: column;
-      }
       .form-container input[type="text"],
       .form-container textarea {
         width: 100%;
@@ -91,21 +87,31 @@
         margin-top: 10px;
         font-weight: bold;
       }
-
-      /* "첨부" 버튼 스타일 */
-      .music-modal .attach-button {
-        display: block;
-        margin: 15px auto 0 auto;
-        background-color: #4caf50;
-        color: white;
-        border: none;
-        padding: 8px 16px;
+      .music-modal #attach-button {
+        margin-top: 10px;
+        background: #f3e5ab;
+        border: 1px solid #ccc;
+        padding: 8px 14px;
         border-radius: 4px;
         cursor: pointer;
         font-size: 14px;
       }
-      .music-modal .attach-button:hover {
-        background-color: #45a049;
+      .music-modal #attach-button:hover {
+        background-color: #ecd898;
+      }
+
+      #attached-file-name {
+        display: none;
+        color: green;
+        margin-top: 10px;
+      }
+      #sheet-upload-section {
+        display: none;
+        margin-top: 10px;
+      }
+      #sheet-upload-section input[type="file"] {
+        display: block;
+        margin-top: 5px;
       }
     </style>
   </head>
@@ -122,22 +128,32 @@
         /><br />
         <textarea id="new-post-content" placeholder="내용" required></textarea
         ><br />
-        <button type="button" id="attach-music-btn">첨부하기</button>
-        <!-- 파일 input은 숨김, libraryMusicId와 librarySheetUrl로 처리 -->
+        <button type="button" id="attach-music-btn">음악/악보 첨부</button>
+        <!-- 음악 파일 입력 (숨김) -->
         <input
-          type="hidden"
-          id="selected-library-music-id"
-          name="libraryMusicId"
-        />
+          type="file"
+          id="new-post-music-file"
+          accept="audio/*"
+          style="display: none"
+        /><br />
+        <!-- 악보 파일 입력 (숨김) -->
         <input
-          type="hidden"
-          id="selected-library-sheet-url"
-          name="librarySheetUrl"
-        />
+          type="file"
+          id="new-post-sheet-file"
+          accept="image/*"
+          style="display: none"
+        /><br />
+        <div
+          id="attached-file-name"
+          style="display: none; color: green; margin-top: 10px"
+        >
+          선택된 파일: <span id="attached-file-text"></span>
+        </div>
         <button type="submit">작성</button>
       </form>
     </div>
 
+    <!-- 라이브러리 모달 -->
     <div class="music-modal" id="music-modal">
       <button id="music-modal-close">닫기</button>
       <h3>내 라이브러리</h3>
@@ -146,11 +162,16 @@
         <button id="library-sheet-switch">내 악보</button>
       </div>
       <ul id="modal-library-list"></ul>
+
       <div id="selected-item"></div>
-      <!-- "첨부" 버튼 추가 -->
-      <button id="attach-selected-item" class="attach-button" disabled>
-        첨부
-      </button>
+
+      <!-- Sheet 업로드 섹션 -->
+      <div id="sheet-upload-section">
+        <h4>새 악보 업로드</h4>
+        <input type="file" id="new-sheet-file" accept="image/*" />
+      </div>
+
+      <button id="attach-button">첨부</button>
     </div>
 
     <script src="js/newPost.js"></script>
