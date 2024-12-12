@@ -7,6 +7,7 @@ const UserSchema = new mongoose.Schema({
   nickname: { type: String, required: true },
   profilePicture: { type: String },
   uploads: [{ type: mongoose.Schema.Types.ObjectId, ref: "Music" }],
+  sheets: [{ type: mongoose.Schema.Types.ObjectId, ref: "Sheet" }], // 추가된 필드
 });
 
 module.exports = mongoose.model("User", UserSchema);

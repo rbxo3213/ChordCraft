@@ -42,12 +42,14 @@
         background-color: #ecd898;
       }
 
-      .current-file {
+      .current-file,
+      .current-sheet-file {
         margin-bottom: 10px;
         font-size: 14px;
         color: #333;
       }
-      .file-actions {
+      .file-actions,
+      .sheet-file-actions {
         margin-bottom: 10px;
       }
 
@@ -95,26 +97,40 @@
       .music-modal .selected {
         background: #cfe3d4;
       }
-      .music-modal #selected-item {
+      .music-modal #edit-selected-item {
         text-align: center;
         margin-top: 10px;
         font-weight: bold;
       }
-
-      /* "첨부" 버튼 스타일 */
-      .music-modal .attach-button {
-        display: block;
-        margin: 15px auto 0 auto;
-        background-color: #4caf50;
-        color: white;
-        border: none;
-        padding: 8px 16px;
+      .music-modal #edit-attach-button {
+        margin-top: 10px;
+        background: #f3e5ab;
+        border: 1px solid #ccc;
+        padding: 8px 14px;
         border-radius: 4px;
         cursor: pointer;
         font-size: 14px;
       }
-      .music-modal .attach-button:hover {
-        background-color: #45a049;
+      .music-modal #edit-attach-button:hover {
+        background-color: #ecd898;
+      }
+
+      #attached-file-name,
+      #attached-sheet-file-name {
+        display: none;
+        color: green;
+        margin-top: 10px;
+      }
+
+      /* 악보 업로드 섹션 */
+      #edit-sheet-upload-section,
+      #edit-music-upload-section {
+        margin-top: 10px;
+      }
+      #edit-sheet-upload-section input[type="file"],
+      #edit-music-upload-section input[type="file"] {
+        display: block;
+        margin-top: 5px;
       }
     </style>
   </head>
@@ -122,7 +138,7 @@
     <a href="guitar.html" class="logo">ChordCraft</a>
     <div class="edit-post-container">
       <h1>글 수정</h1>
-      <form id="edit-post-form">
+      <form id="edit-post-form" enctype="multipart/form-data">
         <input
           type="text"
           id="edit-post-title"
@@ -132,29 +148,41 @@
         <textarea id="edit-post-content" placeholder="내용" required></textarea
         ><br />
         <!-- 라이브러리 업로드 버튼 -->
-        <button type="button" id="library-music-btn">첨부하기</button>
+        <button type="button" id="library-music-btn">음악/악보 첨부</button>
+        <!-- 음악 파일 정보 표시 -->
         <div class="current-file" id="current-file-info" style="display: none">
           현재 음악 파일: <span id="current-file-name"></span>
         </div>
         <div class="file-actions" id="file-actions" style="display: none">
-          <button type="button" id="delete-file-button">파일 삭제</button>
+          <button type="button" id="delete-file-button">음악 삭제</button>
         </div>
-
-        <input
-          type="hidden"
-          id="selected-library-music-id"
-          name="libraryMusicId"
-        />
-        <input
-          type="hidden"
-          id="selected-library-sheet-url"
-          name="librarySheetUrl"
-        />
-
+        <!-- 악보 파일 정보 표시 -->
+        <div
+          class="current-sheet-file"
+          id="current-sheet-info"
+          style="display: none"
+        >
+          현재 악보 파일: <span id="current-sheet-name"></span>
+        </div>
+        <div
+          class="sheet-file-actions"
+          id="sheet-file-actions"
+          style="display: none"
+        >
+          <button type="button" id="delete-sheet-button">악보 삭제</button>
+        </div>
+        <!-- 첨부된 파일 이름 표시 -->
+        <div id="attached-file-name">
+          선택된 음악: <span id="attached-file-text"></span>
+        </div>
+        <div id="attached-sheet-file-name">
+          선택된 악보: <span id="attached-sheet-file-text"></span>
+        </div>
         <button type="submit">수정</button>
       </form>
     </div>
 
+    <!-- 라이브러리 모달 -->
     <div class="music-modal" id="edit-music-modal">
       <button id="edit-music-modal-close">닫기</button>
       <h3>내 라이브러리</h3>
@@ -164,10 +192,21 @@
       </div>
       <ul id="edit-modal-library-list"></ul>
       <div id="edit-selected-item"></div>
-      <!-- "첨부" 버튼 추가 -->
-      <button id="attach-edit-selected-item" class="attach-button" disabled>
-        첨부
-      </button>
+      <!-- 음악 업로드 섹션 -->
+      <div id="edit-music-upload-section" style="display: none">
+        <h4>새 음악 업로드</h4>
+        <input type="file" id="edit-new-music-file" accept="audio/*" />
+      </div>
+      <!-- 악보 업로드 섹션 -->
+      <div id="edit-sheet-upload-section" style="display: none">
+        <h4>새 악보 업로드</h4>
+        <input
+          type="file"
+          id="edit-new-sheet-file"
+          accept="image/png, image/jpeg"
+        />
+      </div>
+      <button id="edit-attach-button">첨부</button>
     </div>
 
     <script src="js/editPost.js"></script>

@@ -1,3 +1,4 @@
+<!-- frontend/postDetail.html -->
 <!DOCTYPE html>
 <html lang="ko">
   <head>
@@ -5,8 +6,40 @@
     <title>게시글 상세보기</title>
     <link rel="stylesheet" href="css/style.css" />
     <style>
-      /* 기존에 post-detail-container 등 스타일은 style.css에서 처리.
-         여기서는 music, content, like를 하나의 박스로 묶는 .post-main-content 추가 */
+      /* 기존 스타일 유지 */
+      .post-detail-container {
+        width: 80%;
+        margin: 50px auto;
+      }
+      .post-info {
+        border-bottom: 1px solid #ccc;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+      }
+      .post-info h1 {
+        margin: 0;
+      }
+      .post-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .post-meta {
+        font-size: 14px;
+        color: #555;
+      }
+      .post-actions button {
+        margin-left: 10px;
+        background: #f3e5ab;
+        border: 1px solid #ccc;
+        padding: 5px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .post-actions button:hover {
+        background-color: #ecd898;
+      }
+
       .post-main-content {
         background: #fff;
         border: 1px solid #ddd;
@@ -14,7 +47,8 @@
         padding: 15px;
         margin-bottom: 20px;
       }
-      .post-main-content .music-play-button {
+      .post-main-content .music-play-button,
+      .post-main-content .sheet-display {
         text-align: center;
         margin-bottom: 20px;
       }
@@ -43,6 +77,30 @@
         margin-top: 10px;
         font-weight: bold;
       }
+
+      .comment-section {
+        border-top: 1px solid #ccc;
+        padding-top: 10px;
+      }
+      .comment {
+        border-bottom: 1px solid #eee;
+        padding: 5px 0;
+      }
+      .comment-author {
+        font-weight: bold;
+      }
+      .comment button {
+        margin-left: 10px;
+        background: #f3e5ab;
+        border: 1px solid #ccc;
+        padding: 2px 6px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+      }
+      .comment button:hover {
+        background-color: #ecd898;
+      }
     </style>
   </head>
   <body>
@@ -62,18 +120,24 @@
         </div>
       </div>
 
-      <!-- 하나의 박스에 음악재생, 본문, 좋아요를 순서대로 배치 -->
+      <!-- 게시글 메인 내용 -->
       <div class="post-main-content">
+        <!-- 음악 파일 표시 -->
         <div class="music-play-button" id="post-music"></div>
+        <!-- 악보 파일 표시 -->
+        <div class="sheet-display" id="post-sheet"></div>
+        <!-- 게시글 본문 -->
         <div class="post-body-text">
           <p id="post-content"></p>
         </div>
+        <!-- 좋아요 섹션 -->
         <div class="like-section">
           <button id="like-button" class="like-button">♥</button>
           <div class="like-count">좋아요: <span id="like-count">0</span></div>
         </div>
       </div>
 
+      <!-- 댓글 섹션 -->
       <div class="comment-section">
         <h3>댓글</h3>
         <div id="comment-list"></div>

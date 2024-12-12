@@ -244,18 +244,11 @@ async function startRecording() {
 
   recordedChunks = [];
   dest = audioContext.createMediaStreamDestination();
-  // MediaStreamSource를 dest로 연결
-  const source = audioContext.createMediaStreamSource(dest.stream);
   mediaRecorder = new MediaRecorder(dest.stream);
   mediaRecorder.ondataavailable = (e) => {
     if (e.data.size > 0) {
       recordedChunks.push(e.data);
     }
-  };
-  mediaRecorder.onstop = () => {
-    console.log("Recording stopped, ready to save");
-    // 모달 표시
-    document.getElementById("record-name-modal").style.display = "block";
   };
   mediaRecorder.start();
   console.log("Recording started");
@@ -267,55 +260,19 @@ function stopRecording() {
     return;
   }
   mediaRecorder.stop();
+  mediaRecorder.onstop = () => {
+    console.log("Recording stopped");
+    // 녹음 종료 후 음악 이름 입력 모달 표시
+    document.getElementById("record-name-modal").style.display = "block";
+  };
 }
 
-// Handle save-recorded-music button
-document
-  .getElementById("save-recorded-music")
-  .addEventListener("click", async () => {
-    const title = document.getElementById("recorded-music-title").value.trim();
-    if (!title) {
-      alert("음악 제목을 입력해주세요.");
-      return;
-    }
-    if (recordedChunks.length === 0) {
-      alert("녹음된 음악이 없습니다.");
-      return;
-    }
-
-    const blob = new Blob(recordedChunks, { type: "audio/webm" });
-    const file = new File([blob], `${title}.webm`, { type: "audio/webm" });
-
-    const formData = new FormData();
-    formData.append("title", title);
-    formData.append("music", file);
-
-    const res = await fetch(`${SERVER_URL}/api/music/upload`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: formData,
-    });
-
-    const resData = await res.json();
-    if (res.ok) {
-      alert("녹음한 음악 저장 성공");
-      // 녹음 상태 초기화
-      recordedChunks = [];
-      document.getElementById("recorded-music-title").value = "";
-      document.getElementById("record-name-modal").style.display = "none";
-    } else {
-      alert("녹음한 음악 저장 실패: " + (resData.error || resData.message));
-    }
-  });
-
-// Handle close-record-name-modal button
-document
-  .getElementById("close-record-name-modal")
-  .addEventListener("click", () => {
-    document.getElementById("record-name-modal").style.display = "none";
-  });
+// 모달 스타일 및 레이아웃 개선
+const modals = document.querySelectorAll(".modal");
+modals.forEach((modal) => {
+  modal.style.background = "#faf8ef";
+  modal.style.borderRadius = "8px";
+});
 
 // 악보 보관함 열기
 document
@@ -416,3 +373,54 @@ async function loadSheetLibrary() {
     sheetListDiv.textContent = "등록된 악보가 없습니다.";
   }
 }
+
+// Handle save and cancel buttons in record-name-modal
+document
+  .getElementById("save-recorded-music")
+  .addEventListener("click", async () => {
+    // Get title
+    const titleInput = document.getElementById("recorded-music-title");
+    const title = titleInput.value.trim();
+    if (!title) {
+      alert("음악 제목을 입력해주세요.");
+      return;
+    }
+
+    // Create Blob from recordedChunks
+    const blob = new Blob(recordedChunks, { type: "audio/webm" });
+    const file = new File([blob], `${title}.webm`, { type: "audio/webm" });
+
+    // Prepare FormData
+    const formData = new FormData();
+    formData.append("music", file);
+    formData.append("title", title);
+
+    // Send to server
+    const res = await fetch(`${SERVER_URL}/api/music/upload`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    const resData = await res.json();
+    if (res.ok) {
+      alert("녹음한 음악을 저장했습니다.");
+      // Clear recordedChunks
+      recordedChunks = [];
+      // Close modal
+      document.getElementById("record-name-modal").style.display = "none";
+      // Clear title input
+      titleInput.value = "";
+    } else {
+      alert("음악 저장 실패: " + (resData.error || resData.message));
+    }
+  });
+
+document
+  .getElementById("close-record-name-modal")
+  .addEventListener("click", () => {
+    recordedChunks = [];
+    document.getElementById("record-name-modal").style.display = "none";
+  });
