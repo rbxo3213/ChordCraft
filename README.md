@@ -2,6 +2,8 @@
 
 ![ChordCraft 로고](frontend/assets/images/logo.png)
 
+https://chordcraft-444313.du.r.appspot.com/
+
 ChordCraft는 사용자들이 가상 기타를 연주하고, 자신의 음악 및 악보를 업로드하며, 커뮤니티 게시판을 통해 소통할 수 있는 통합 웹 애플리케이션입니다. 음악 애호가들이 창작물을 공유하고, 다른 사용자들과 의견을 교환하며, 가상 환경에서 음악을 연주할 수 있는 다양한 기능을 제공합니다.
 
 ---
