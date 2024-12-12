@@ -8,7 +8,7 @@ IGNORE_DIRS = ['node_modules']
 
 # 출력 디렉토리
 OUTPUT_DIR = 'output'
-OUTPUT_FILE = 'all_sources3.txt'
+OUTPUT_FILE = 'all_sources.txt'
 
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
